@@ -23,7 +23,12 @@ function bootstrap_tour_schema() {
       'name' => array(
         'type' => 'varchar',
         'length' => '255',
-        'description' => 'Unique ID for tours used to identify them programmatically.',
+        'description' => 'Unique ID for tours used to identify them programmatically, generated from the name.',
+      ),
+      'title' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'description' => 'Human readable name for the tour used for administrative purposes.',
       ),
       'btid' => array(
         'type' => 'serial',
@@ -32,14 +37,20 @@ function bootstrap_tour_schema() {
         'description' => 'Primary ID field for the table. Not used for anything except internal lookups.',
         'no export' => TRUE,
       ),
+      'autorun' => array(
+        'description' => 'Boolean indicating whether the tour should automatically start when the path of the first step is loaded.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
       'description' => array(
         'type' => 'varchar',
         'length' => '255',
-        'description' => 'A human readable name of a preset.',
+        'description' => 'A description of the site tour, used for administrative purposes.',
       ),
       'steps' => array(
         'type' => 'blob',
-        'description' => 'A serialized array of tour steps',
+        'description' => 'A serialized array of tour steps.',
         'serialize' => TRUE,
       ),
     ),

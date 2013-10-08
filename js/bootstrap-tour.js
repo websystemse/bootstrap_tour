@@ -1,26 +1,29 @@
 (function($) {
   Drupal.behaviors.bootstrapTour = {
     attach: function(context) {
-      var t = new Tour({
-        debug: true,
-        storage: window.localStorage,
-      });
-      t.addSteps([
-        {
-          title: "Who can see this content?",
-          content: "This box tells you about which users can view this page.",
-          element: '.btn-small[title=Edit]',
-          placement: 'bottom',
+      var tourConfig = Drupal.settings.bootstrapTour.tour;
+      if (!tourConfig) {
+        return;
+      }
+
+      var t = new Tour({ storage: window.localStorage, debug: true });
+      $.each(tourConfig.steps, function(index, step) {
+        t.addSteps([{
+          title: step.title,
+          content: step.content,
+          element: step.selector,
+          placement: step.placement,
+          path: '/' + step.path,
           animation: false
-        }, {
-          title: "Who can see this content?",
-          content: "This box tells you about which users can view this page.",
-          element: '#panels-ipe-paneid-new-10',
-          animation: false,
-          placement: 'bottom'
-        }
-      ]);
-      t.start();
+        }])
+      });
+
+      if (tourConfig.force && tourConfig.steps[0].path == window.location.pathname) {
+        // Manually restart if "force" is true and we're on the path of the first step.
+        t.restart();
+      } else {
+        t.start();
+      }
     }
   }
 })(jQuery);
