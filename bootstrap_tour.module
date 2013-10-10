@@ -11,7 +11,10 @@ function bootstrap_tour_run_tour($name, $force = FALSE) {
 
   $tour = reset($tours);
   $tour->steps = unserialize($tour->steps);
-  foreach($tour->steps as &$step) {
+  foreach($tour->steps as $key => &$step) {
+    if ($key == 0 && ($step['path'] == current_path() || $step['path'] == request_path())) {
+      $tour->isFirstStep = TRUE;
+    }
     $step['title'] = check_plain($step['title']);
     $step['content'] = check_markup($step['content'], $step['format']);
   }
@@ -32,13 +35,19 @@ function bootstrap_tour_run_tour($name, $force = FALSE) {
 function bootstrap_tour_init() {
   $tours = bootstrap_tour_load_all();
   foreach($tours as $tour) {
-    $tour->steps = unserialize($tour->steps);
-    if ($tour->autorun && !empty($tour->steps)) {
-      foreach ($tour->steps as $step) {
-        $path = $step['path'];
-        if ($path == current_path() || $path == request_path()) {
-          bootstrap_tour_run_tour($tour->name);
-          break;
+    if (!empty($_GET['tour']) && $_GET['tour'] == $tour->name) {
+      // Force a tour to run if ?tour=tourname is in the query string.
+      bootstrap_tour_run_tour($tour->name, TRUE);
+    } else {
+      // Otherwise, only run the tour if it's set to auto-run and we're on the path of one of the steps.
+      $tour->steps = unserialize($tour->steps);
+      if ($tour->autorun && !empty($tour->steps)) {
+        foreach ($tour->steps as $step) {
+          $path = $step['path'];
+          if ($path == current_path() || $path == request_path()) {
+            bootstrap_tour_run_tour($tour->name);
+            break;
+          }
         }
       }
     }
