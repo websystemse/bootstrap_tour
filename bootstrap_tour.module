@@ -41,10 +41,13 @@ function bootstrap_tour_init() {
     } else {
       // Otherwise, only run the tour if it's set to auto-run and we're on the path of one of the steps.
       $tour->steps = unserialize($tour->steps);
-      if ($tour->autorun && !empty($tour->steps)) {
-        foreach ($tour->steps as $step) {
+      if (!empty($tour->steps)) {
+        foreach ($tour->steps as $key => $step) {
           $path = $step['path'];
           if ($path == current_path() || $path == request_path()) {
+            if ($key == 0 && !$tour->autorun) {
+              break;
+            }
             bootstrap_tour_run_tour($tour->name);
             break;
           }
@@ -207,6 +210,7 @@ function bootstrap_tour_form($form, &$form_state, $tour = '') {
     $form['steps_fieldset'][$i . '_selector'] = array(
       '#type' => 'textfield',
       '#title' => t('CSS Selector'),
+      '#description' => t('Leave this blank if you want this popup to show up centered on the page and not attached to a specific element.'),
       '#default_value' => !empty($tour->steps[$i]['selector']) ? $tour->steps[$i]['selector'] : '',
     );
     $form['steps_fieldset'][$i . '_placement'] = array(
@@ -223,6 +227,7 @@ function bootstrap_tour_form($form, &$form_state, $tour = '') {
     $form['steps_fieldset'][$i . '_title'] = array(
       '#type' => 'textfield',
       '#title' => t('Popup Title'),
+      '#required' => TRUE,
       '#default_value' => !empty($tour->steps[$i]['title']) ? $tour->steps[$i]['title'] : '',
     );
     $form['steps_fieldset'][$i . '_content'] = array(
@@ -277,7 +282,7 @@ function bootstrap_tour_form_submit($form, &$form_state) {
   $tour->name = !empty($vals['name']) ? $vals['name'] : bootstrap_tour_generate_machine_name($vals['title']);
   $tour->autorun = $vals['autorun'];
   $i = 0;
-  while (!empty($vals[$i . '_selector'])) {
+  while (!empty($vals[$i . '_title'])) {
     $tour->steps[] = array(
       'selector' => $vals[$i . '_selector'],
       'path' => $vals[$i . '_path'],

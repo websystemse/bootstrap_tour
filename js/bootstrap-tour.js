@@ -8,14 +8,21 @@
 
       var t = new Tour({ storage: window.localStorage, debug: true });
       $.each(tourConfig.steps, function(index, step) {
-        t.addSteps([{
+        var options = {
           title: step.title,
           content: step.content,
-          element: step.selector,
           placement: step.placement,
-          path: '/' + step.path,
-          animation: false
-        }])
+          animation: true
+        }
+        if (step.path) {
+          options.path = '/' + step.path;
+        }
+        if (step.selector == '') {
+          options.orphan = true;
+        } else {
+          options.element = step.selector;
+        }
+        t.addSteps([options])
       });
 
       if (tourConfig.force && tourConfig.isFirstStep) {
