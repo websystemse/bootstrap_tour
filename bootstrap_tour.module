@@ -21,7 +21,17 @@ function bootstrap_tour_run_tour($name, $force = FALSE) {
   $tour->force = $force;
   drupal_add_js(array('bootstrapTour' => array('tour' => $tour)), 'setting');
 
-  libraries_load('bootstrap_tour');
+  if ($library = libraries_detect('bootstrap_tour') && !empty($library['installed'])) {
+    libraries_load('bootstrap_tour');
+  }
+  else {
+    // Grab the Bootstrap Tour JS from CDNJS if the library isn't installed.
+    global $base_url;
+    $base = parse_url($base_url);
+    drupal_add_css($base['scheme'] . '://cdnjs.cloudflare.com/ajax/libs/bootstrap-tour/0.6.1/css/bootstrap-tour.min.css', 'external');
+    drupal_add_js($base['scheme'] . '://cdnjs.cloudflare.com/ajax/libs/bootstrap-tour/0.6.1/js/bootstrap-tour.min.js', 'external');
+  }
+
   drupal_add_js(drupal_get_path('module', 'bootstrap_tour') . '/js/bootstrap-tour.js');
   drupal_add_css(drupal_get_path('module', 'bootstrap_tour') . '/css/bootstrap-tour.css');
 }
