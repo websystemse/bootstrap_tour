@@ -110,7 +110,7 @@ function bootstrap_tour_menu() {
   $items['admin/structure/tours/manage/%bootstrap_tour/delete'] = array(
     'title' => 'Delete site tour',
     'page arguments' => array('bootstrap_tour_delete_confirm', 4),
-    'page_callback' => 'drupal_get_form',
+    'page callback' => 'drupal_get_form',
     'access arguments' => array('administer bootstrap tours'),
     'type' => MENU_LOCAL_TASK,
   );
