@@ -13,7 +13,9 @@ function bootstrap_tour_run_tour($name, $force = FALSE) {
   $tour->steps = unserialize($tour->steps);
   foreach($tour->steps as $key => &$step) {
     if ($key == 0 && ($step['path'] == current_path() || $step['path'] == request_path() || ($step['path'] == '<front>' && request_path() == ''))) {
-      $tour->isFirstStep = TRUE;
+      if (empty($_GET['step']) || $_GET['step'] == 0) {
+        $tour->isFirstStep = TRUE;
+      }
     }
     $step['title'] = check_plain($step['title']);
     $step['content'] = check_markup($step['content'], $step['format']);

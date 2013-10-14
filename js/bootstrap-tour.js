@@ -20,6 +20,7 @@
           } else {
             options.path = '/' + step.path;
           }
+          options.path += '?tour=' + tourConfig.name + '&step=' + index;
         }
         if (step.selector == '') {
           options.orphan = true;
@@ -28,7 +29,6 @@
         }
         t.addSteps([options])
       });
-        debugger;
 
       if (tourConfig.force && tourConfig.isFirstStep) {
         // Manually restart if "force" is true and we're on the path of the first step.
