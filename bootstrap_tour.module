@@ -54,9 +54,9 @@ function bootstrap_tour_init() {
       if (!empty($tour->steps)) {
         foreach ($tour->steps as $key => $step) {
           $path = $step['path'];
-          if ($path == current_path() || $path == request_path()) {
+          if (!empty($path) && ($path == current_path() || $path == request_path() || ($path == '<front>' && request_path() == ''))) {
             if ($key == 0 && !$tour->autorun) {
-              break;
+              continue;
             }
             bootstrap_tour_run_tour($tour->name);
             break;
