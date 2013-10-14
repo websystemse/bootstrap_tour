@@ -215,7 +215,7 @@ function bootstrap_tour_form($form, &$form_state, $tour = '') {
       '#type' => 'textfield',
       '#title' => t('Path'),
       '#required' => $i == 0,
-      '#description' => t('Which path should this step be displayed on? This is required on the first step, but if subsequent steps will use the same path as the previous step(s) you can leave this blank. Enter <front> for the front page.'),
+      '#description' => t('Which path should this step be displayed on? This is required on the first step, but if subsequent steps will use the same path as the previous step(s) you can leave this blank. Enter &lt;front&gt; for the front page.'),
       '#default_value' => !empty($tour->steps[$i]['path']) ? $tour->steps[$i]['path'] : '',
     );
     $form['steps_fieldset'][$i . '_selector'] = array(
