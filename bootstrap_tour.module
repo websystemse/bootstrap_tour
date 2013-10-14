@@ -50,19 +50,21 @@ function bootstrap_tour_init() {
     if (!empty($_GET['tour']) && $_GET['tour'] == $tour->name) {
       // Force a tour to run if ?tour=tourname is in the query string.
       bootstrap_tour_run_tour($tour->name, TRUE);
-    } else {
-      // Otherwise, only run the tour if it's set to auto-run and we're on the path of one of the steps.
-      $tour->steps = unserialize($tour->steps);
-      if (!empty($tour->steps)) {
-        foreach ($tour->steps as $key => $step) {
-          $path = $step['path'];
-          if ($path == current_path() || $path == request_path()) {
-            if ($key == 0 && !$tour->autorun) {
-              break;
-            }
-            bootstrap_tour_run_tour($tour->name);
+      return;
+    }
+  }
+  foreach($tours as $tour) {
+    // Otherwise, only run the tour if it's set to auto-run and we're on the path of one of the steps.
+    $tour->steps = unserialize($tour->steps);
+    if (!empty($tour->steps)) {
+      foreach ($tour->steps as $key => $step) {
+        $path = $step['path'];
+        if ($path == current_path() || $path == request_path()) {
+          if ($key == 0 && !$tour->autorun) {
             break;
           }
+          bootstrap_tour_run_tour($tour->name);
+          break;
         }
       }
     }
