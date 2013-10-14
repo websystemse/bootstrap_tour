@@ -6,7 +6,7 @@
         return;
       }
 
-      var t = new Tour({ storage: window.localStorage, debug: true });
+      var t = new Tour({ storage: window.localStorage });
       $.each(tourConfig.steps, function(index, step) {
         var options = {
           title: step.title,
