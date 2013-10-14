@@ -6,7 +6,7 @@
         return;
       }
 
-      var t = new Tour({ storage: window.localStorage });
+      var t = new Tour({ storage: window.localStorage, debug: true });
       $.each(tourConfig.steps, function(index, step) {
         var options = {
           title: step.title,
@@ -15,7 +15,11 @@
           animation: true
         }
         if (step.path) {
-          options.path = '/' + step.path;
+          if (step.path.trim() == '<front>') {
+            options.path = '/';
+          } else {
+            options.path = '/' + step.path;
+          }
         }
         if (step.selector == '') {
           options.orphan = true;
@@ -24,6 +28,7 @@
         }
         t.addSteps([options])
       });
+        debugger;
 
       if (tourConfig.force && tourConfig.isFirstStep) {
         // Manually restart if "force" is true and we're on the path of the first step.

@@ -12,7 +12,7 @@ function bootstrap_tour_run_tour($name, $force = FALSE) {
   $tour = reset($tours);
   $tour->steps = unserialize($tour->steps);
   foreach($tour->steps as $key => &$step) {
-    if ($key == 0 && ($step['path'] == current_path() || $step['path'] == request_path())) {
+    if ($key == 0 && ($step['path'] == current_path() || $step['path'] == request_path() || ($step['path'] == '<front>' && request_path() == ''))) {
       $tour->isFirstStep = TRUE;
     }
     $step['title'] = check_plain($step['title']);
@@ -214,7 +214,8 @@ function bootstrap_tour_form($form, &$form_state, $tour = '') {
     $form['steps_fieldset'][$i . '_path'] = array(
       '#type' => 'textfield',
       '#title' => t('Path'),
-      '#description' => t('Which path should this step be displayed on? If the same as the previous step or if you will be running the tour manually, you can leave this blank. Otherwise, the tour will automatically load the path and continue.'),
+      '#required' => $i == 0,
+      '#description' => t('Which path should this step be displayed on? This is required on the first step, but if subsequent steps will use the same path as the previous step(s) you can leave this blank. Enter <front> for the front page.'),
       '#default_value' => !empty($tour->steps[$i]['path']) ? $tour->steps[$i]['path'] : '',
     );
     $form['steps_fieldset'][$i . '_selector'] = array(
