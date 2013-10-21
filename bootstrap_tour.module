@@ -10,6 +10,19 @@ function bootstrap_tour_run_tour($name, $force = FALSE) {
   }
 
   $tour = reset($tours);
+
+  if (!empty($tour->roles)) {
+    // Compare the tour's roles to the user's roles and if there aren't any overlaps and
+    // the user isn't user 1, cancel running the tour.
+    global $user;
+    $tour_roles = explode(',', $tour->roles);
+    $user_roles = array_keys($user->roles);
+    $compare = array_intersect($tour_roles, $user_roles);
+    if ($user->uid != 1 && empty($compare)) {
+      return;
+    }
+  }
+
   $tour->steps = unserialize($tour->steps);
   foreach($tour->steps as $key => &$step) {
     if ($key == 0 && ($step['path'] == current_path() || $step['path'] == request_path() || ($step['path'] == '<front>' && request_path() == ''))) {
@@ -194,6 +207,14 @@ function bootstrap_tour_form($form, &$form_state, $tour = '') {
     '#description' => t('Used for administrative purposes only.'),
     '#default_value' => !empty($tour->description) ? $tour->description : '',
   );
+  $form['roles'] = array(
+    '#type' => 'select',
+    '#title' => t('Roles'),
+    '#description' => t('Which roles can access this tour? Leave blank for all.'),
+    '#multiple' => TRUE,
+    '#options' => user_roles(),
+    '#default_value' => !empty($tour->roles) ? explode(',', $tour->roles) : '',
+  );
   $form['autorun'] = array(
     '#type' => 'checkbox',
     '#title' => t('Automatically run'),
@@ -296,6 +317,7 @@ function bootstrap_tour_form_submit($form, &$form_state) {
   $tour->is_new = empty($vals['name']);
   $tour->name = !empty($vals['name']) ? $vals['name'] : bootstrap_tour_generate_machine_name($vals['title']);
   $tour->autorun = $vals['autorun'];
+  $tour->roles = implode(',', $vals['roles']);
   $i = 0;
   while (!empty($vals[$i . '_title'])) {
     $tour->steps[] = array(

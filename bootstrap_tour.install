@@ -30,6 +30,11 @@ function bootstrap_tour_schema() {
         'length' => '255',
         'description' => 'Human readable name for the tour used for administrative purposes.',
       ),
+      'roles' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'description' => 'A comma separated list of roles that can access this tour.',
+      ),
       'btid' => array(
         'type' => 'serial',
         'unsigned' => TRUE,
@@ -60,4 +65,13 @@ function bootstrap_tour_schema() {
     ),
   );
   return $schema;
+}
+
+function bootstrap_tour_update_7001(&$sandbox) {
+  $roles = array(
+    'type' => 'varchar',
+    'length' => '255',
+    'description' => 'A comma separated list of roles that can access this tour.',
+  );
+  db_add_field('bootstrap_tour', 'roles', $roles);
 }
