@@ -67,6 +67,9 @@ function bootstrap_tour_schema() {
   return $schema;
 }
 
+/**
+ * Add a "roles" column to the DB schema.
+ */
 function bootstrap_tour_update_7001(&$sandbox) {
   $roles = array(
     'type' => 'varchar',
