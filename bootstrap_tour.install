@@ -4,19 +4,12 @@ function bootstrap_tour_schema() {
   $schema['bootstrap_tour'] = array(
     'description' => t('Bootstrap tours courtesy of the Bootstrap Tours module'),
     'export' => array(
-      'key' => 'name',
-      'key name' => 'Name',
-      'primary key' => 'btid',
-      'identifier' => 'bootstrap_tour',
-      'load callback' => 'bootstrap_tour_load',
-      'load all callback' => 'bootstrap_tour_load_all',
-      'save callback' => 'bootstrap_tour_save',
-      'bulk export' => TRUE,
+      'primary_key' => 'name',
       'api' => array(
         'owner' => 'bootstrap_tour',
-        'api' => 'bootstrap_tour',
-        'minimum_version' => 1,
-        'current_version' => 1,
+        'api' => 'bootstrap_tour_tour',
+        'minimum_version' => '1',
+        'current_version' => '1',
       ),
     ),
     'fields' => array(
