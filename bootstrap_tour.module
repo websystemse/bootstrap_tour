@@ -34,6 +34,9 @@ function bootstrap_tour_run_tour($name, $force = FALSE) {
     $step['content'] = check_markup($step['content'], $step['format']);
   }
   $tour->force = $force;
+
+  drupal_alter('bootstrap_tour', $tour);
+
   drupal_add_js(array('bootstrapTour' => array('tour' => $tour)), 'setting');
 
   if ($library = libraries_detect('bootstrap_tour') && !empty($library['installed'])) {
