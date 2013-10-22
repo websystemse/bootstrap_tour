@@ -24,6 +24,14 @@ function bootstrap_tour_run_tour($name, $force = FALSE) {
   }
 
   $tour->steps = unserialize($tour->steps);
+  $first_path = $tour->steps[0]['path'];
+  if ($first_path == current_path() || $first_path == request_path() || ($first_path == '<front>' && request_path() == '')) {
+    if (empty($_GET['step']) || $_GET['step'] == 0) {
+      // We're starting the tour over.
+      unset($_SESSION['nexttour']);
+    }
+  }
+  drupal_alter('bootstrap_tour', $tour);
   foreach($tour->steps as $key => &$step) {
     if ($key == 0 && ($step['path'] == current_path() || $step['path'] == request_path() || ($step['path'] == '<front>' && request_path() == ''))) {
       if (empty($_GET['step']) || $_GET['step'] == 0) {
@@ -34,8 +42,6 @@ function bootstrap_tour_run_tour($name, $force = FALSE) {
     $step['content'] = check_markup($step['content'], $step['format']);
   }
   $tour->force = $force;
-
-  drupal_alter('bootstrap_tour', $tour);
 
   drupal_add_js(array('bootstrapTour' => array('tour' => $tour)), 'setting');
 
@@ -58,11 +64,15 @@ function bootstrap_tour_run_tour($name, $force = FALSE) {
  * Implementation of hook_init().
  * Load all the tours and figure out if any are set to auto-run and start on the current page.
  * If so, go ahead and run that one.
- * @TODO: Convert this to hook_page_build().
  */
-function bootstrap_tour_init() {
+function bootstrap_tour_page_build(&$page) {
   $tours = bootstrap_tour_load_all();
   foreach($tours as $tour) {
+    if (!empty($_SESSION['nexttour']) && $_SESSION['nexttour'] == $tour->name) {
+      // Force a tour to run if the tour name is in the session vars.
+      bootstrap_tour_run_tour($tour->name, TRUE);
+      return;
+    }
     if (!empty($_GET['tour']) && $_GET['tour'] == $tour->name) {
       // Force a tour to run if ?tour=tourname is in the query string.
       bootstrap_tour_run_tour($tour->name, TRUE);
