@@ -7,8 +7,7 @@
       }
       var path = Drupal.settings.basePath;
       if (path.charAt(path.length - 1) == "/") path = path.substr(0, path.length - 1);
-      //if (path.charAt(0) == "/") path = path.substr(1);
-console.log(path);
+
       var t = new Tour({
         storage: window.localStorage,
         basePath: path
