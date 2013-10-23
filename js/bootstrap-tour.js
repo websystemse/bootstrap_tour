@@ -21,9 +21,9 @@ console.log(path);
         }
         if (step.path) {
           if (step.path.trim() == '<front>') {
-            options.path = '/';
+            options.path = Drupal.settings.basePath;
           } else {
-            options.path = '/' + step.path;
+            options.path = Drupal.settings.basePath + step.path;
           }
           if (step.path.indexOf('?tour') === -1 && step.path.indexOf('&tour') === -1) {
             options.path += '?tour=' + tourConfig.name + '&step=' + index;
