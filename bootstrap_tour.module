@@ -367,7 +367,11 @@ function bootstrap_tour_list() {
     $row = array();
     $row[] = array('data' => $tour->title);
     $row[] = array('data' => l(t('edit'), 'admin/structure/tours/manage/' . $name));
-    $row[] = array('data' => l(t('delete'), 'admin/structure/tours/manage/' . $name . '/delete'));
+    if (!bootstrap_tour_is_default($tour->name)) {
+      $row[] = array('data' => l(t('delete'), 'admin/structure/tours/manage/' . $name . '/delete'));
+    } else {
+      $row[] = array('data' => ''); // @TODO: Add enable/disable for default tours.
+    }
     $rows[] = $row;
   }
 
