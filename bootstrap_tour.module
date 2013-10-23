@@ -330,7 +330,7 @@ function bootstrap_tour_form_submit($form, &$form_state) {
   $tour = new stdClass();
   $tour->description = $vals['description'];
   $tour->title = $vals['title'];
-  $tour->is_new = empty($vals['name']);
+  $tour->is_new = empty($vals['name']) || bootstrap_tour_is_default($vals['name']);
   $tour->name = !empty($vals['name']) ? $vals['name'] : bootstrap_tour_generate_machine_name($vals['title']);
   $tour->autorun = $vals['autorun'];
   $tour->roles = implode(',', $vals['roles']);
@@ -440,6 +440,14 @@ function bootstrap_tour_load_all() {
 function bootstrap_tour_load($name) {
   ctools_include('export');
   return ctools_export_crud_load('bootstrap_tour', $name);
+}
+
+/**
+ * Helper function to look up an object by name to see if it's a default or not.
+ */
+function bootstrap_tour_is_default($name) {
+  $tour = bootstrap_tour_load($name);
+  return !empty($tour->in_code_only);
 }
 
 /**
