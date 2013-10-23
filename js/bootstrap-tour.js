@@ -22,9 +22,9 @@ console.log(path);
         }
         if (step.path) {
           if (step.path.trim() == '<front>') {
-            options.path = Drupal.settings.basePath;
+            options.path = '/';
           } else {
-            options.path = Drupal.settings.basePath + step.path;
+            options.path = '/' + step.path;
           }
           if (step.path.indexOf('?tour') === -1 && step.path.indexOf('&tour') === -1) {
             options.path += '?tour=' + tourConfig.name + '&step=' + index;
