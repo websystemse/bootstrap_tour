@@ -5,7 +5,7 @@
  */
 function bootstrap_tour_run_tour($name, $force = FALSE) {
   $tour = bootstrap_tour_load($name);
-  if (empty($tour)) {
+  if (empty($tour) || !empty($tour->disabled)) {
     return;
   }
 
@@ -148,6 +148,13 @@ function bootstrap_tour_menu() {
     'access arguments' => array('administer bootstrap tours'),
     'type' => MENU_LOCAL_TASK,
   );
+  $items['admin/structure/tours/manage/%bootstrap_tour/toggle'] = array(
+    'title' => 'Toggle tour status',
+    'page arguments' => array(4),
+    'page callback' => 'bootstrap_tour_toggle_status',
+    'access arguments' => array('administer bootstrap tours'),
+    'type' => MENU_LOCAL_TASK,
+  );
   return $items;
 }
 
@@ -178,6 +185,22 @@ function bootstrap_tour_delete_confirm($form, &$form_state, $tour = '') {
     t('Delete'),
     t('Cancel')
   );
+}
+
+
+/**
+ * Submit callback for the delete confirmation form. Actually performs the delete.
+ */
+function bootstrap_tour_toggle_status($tour) {
+  if (empty($tour->disabled)) {
+    drupal_set_message(t('The ') . $tour->title . t(' tour has been disabled.'));
+    $disable = TRUE;
+  } else {
+    drupal_set_message(t('The ') . $tour->title . t(' tour has been enabled.'));
+    $disable = FALSE;
+  }
+  ctools_export_crud_set_status('bootstrap_tour', $tour, $disable);
+  drupal_goto('admin/structure/tours');
 }
 
 /**
@@ -359,7 +382,7 @@ function bootstrap_tour_form_submit($form, &$form_state) {
  * Callback function for admin/build/tours
  */
 function bootstrap_tour_list() {
-  $names = bootstrap_tour_load_all();
+  $names = bootstrap_tour_load_all(TRUE);
   $header = array(t('Name'), array('data' => t('Operations'), 'colspan' => '2'));
   $rows = array();
 
@@ -370,7 +393,11 @@ function bootstrap_tour_list() {
     if (!bootstrap_tour_is_default($tour->name)) {
       $row[] = array('data' => l(t('delete'), 'admin/structure/tours/manage/' . $name . '/delete'));
     } else {
-      $row[] = array('data' => ''); // @TODO: Add enable/disable for default tours.
+      if (empty($tour->disabled)) {
+        $row[] = array('data' => l(t('disable'), 'admin/structure/tours/manage/' . $name . '/toggle'));
+      } else {
+        $row[] = array('data' => l(t('enable'), 'admin/structure/tours/manage/' . $name . '/toggle'));
+      }
     }
     $rows[] = $row;
   }
@@ -433,9 +460,13 @@ function bootstrap_tour_libraries_info() {
 /**
  * Callback function for loading all bootstrap tours in an array of 'btid' => 'name' format.
  */
-function bootstrap_tour_load_all() {
+function bootstrap_tour_load_all($include_disabled = FALSE) {
   ctools_include('export');
-  return ctools_export_crud_load_all('bootstrap_tour');
+  $tours = ctools_export_crud_load_all('bootstrap_tour');
+  if (!$include_disabled) {
+    $tours = array_filter($tours, 'bootstrap_tour_is_enabled');
+  }
+  return $tours;
 }
 
 /**
@@ -452,6 +483,13 @@ function bootstrap_tour_load($name) {
 function bootstrap_tour_is_default($name) {
   $tour = bootstrap_tour_load($name);
   return !empty($tour->in_code_only);
+}
+
+/**
+ * Helper function to return whether or not a tour is disabled.
+ */
+function bootstrap_tour_is_enabled($tour) {
+  return empty($tour->disabled);
 }
 
 /**
