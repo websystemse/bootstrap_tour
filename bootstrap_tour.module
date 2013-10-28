@@ -83,19 +83,13 @@ function bootstrap_tour_page_build(&$page) {
   }
   foreach($tours as $tour) {
     // Otherwise, only run the tour if it's set to auto-run and we're on the path of one of the steps.
-    if (!empty($tour->steps) && !is_array($tour->steps)) {
-      $tour->steps = unserialize($tour->steps);
-    }
-    if (!empty($tour->steps)) {
-      foreach ($tour->steps as $key => $step) {
-        $path = $step['path'];
-        if ($path == current_path() || $path == request_path()) {
-          if ($key == 0 && !$tour->autorun) {
-            break;
-          }
-          bootstrap_tour_run_tour($tour->name);
-          break;
-        }
+    if (!empty($tour->steps) && $tour->autorun) {
+      if (!is_array($tour->steps)) {
+        $tour->steps = unserialize($tour->steps);
+      }
+      $path = $tour->steps[0]['path'];
+      if ($path == current_path() || $path == request_path()) {
+        bootstrap_tour_run_tour($tour->name);
       }
     }
   }
