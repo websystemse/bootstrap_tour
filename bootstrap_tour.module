@@ -28,7 +28,9 @@ function bootstrap_tour_run_tour($name, $force = FALSE) {
   if ($first_path == current_path() || $first_path == request_path() || ($first_path == '<front>' && request_path() == '')) {
     if (empty($_GET['step']) || $_GET['step'] == 0) {
       // We're starting the tour over.
-      unset($_SESSION['nexttour']);
+      if (!empty($_SESSION['nexttour'])) {
+        unset($_SESSION['nexttour']);
+      }
     }
   }
   drupal_alter('bootstrap_tour', $tour);
