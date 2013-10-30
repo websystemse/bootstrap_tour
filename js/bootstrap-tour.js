@@ -1,26 +1,34 @@
 (function($) {
   Drupal.behaviors.bootstrapTour = {
     attach: function(context) {
-      Tour.prototype._isRedirect = function(path, currentPath) {
-        // Override the isRedirect function so that we can support non-clean-URLs.
-        currentPath = '/' + (location.pathname+location.search).substr(1)
-        if (path !== '/') {
-          return (path && path !== currentPath);
-        } else {
-          return (path && currentPath.indexOf('?q=') !== -1);
-        }
-      }
+
       var tourConfig = Drupal.settings.bootstrapTour.tour;
       if (!tourConfig) {
         return;
       }
-      var path = Drupal.settings.basePath;
-      if (path.charAt(path.length - 1) == "/") path = path.substr(0, path.length - 1);
 
+      Tour.prototype._isRedirect = function(path, currentPath) {
+        if (path == null || path == Drupal.settings.basePath) {
+          return false;
+        }
+        // Override the isRedirect function so that we can support non-clean-URLs.
+        currentPath = '/' + (location.pathname+location.search).substr(1)
+        currentPath = currentPath.replace(Drupal.settings.basePath, '/');
+        path = path.replace(Drupal.settings.basePath, '/');
+        if (path !== '/') {
+          return (path !== currentPath);
+        } else {
+          return (currentPath.indexOf('?q=') !== -1);
+        }
+      }
+
+      var path = Drupal.settings.basePath;
       var t = new Tour({
         storage: window.localStorage,
-        basePath: path
+        basePath: path,
+        debug: true
       });
+
       $.each(tourConfig.steps, function(index, step) {
         var options = {
           title: step.title,
@@ -29,7 +37,7 @@
           animation: true
         }
         if (step.path) {
-          options.path = '/';
+          options.path = '';
           if (step.path.trim() != '<front>') {
             if (!tourConfig.cleanUrls) {
               options.path += '?q=' // Don't need the first / in this case.
@@ -45,12 +53,15 @@
             options.path += 'tour=' + tourConfig.name + '&step=' + index;
           }
         }
+
         if (step.selector == '') {
           options.orphan = true;
         } else {
           options.element = step.selector;
         }
+        console.log(options);
         t.addSteps([options])
+
       });
 
       if (tourConfig.force && tourConfig.isFirstStep) {
@@ -59,6 +70,7 @@
       } else {
         t.start();
       }
+
       $(window).trigger('resize');
     }
   }
