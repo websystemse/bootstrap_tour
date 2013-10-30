@@ -1,6 +1,15 @@
 (function($) {
   Drupal.behaviors.bootstrapTour = {
     attach: function(context) {
+      Tour.prototype._isRedirect = function(path, currentPath) {
+        // Override the isRedirect function so that we can support non-clean-URLs.
+        currentPath = '/' + (location.pathname+location.search).substr(1)
+        if (path !== '/') {
+          return (path && path !== currentPath);
+        } else {
+          return (path && currentPath.indexOf('?q=') !== -1);
+        }
+      }
       var tourConfig = Drupal.settings.bootstrapTour.tour;
       if (!tourConfig) {
         return;
@@ -20,13 +29,20 @@
           animation: true
         }
         if (step.path) {
-          if (step.path.trim() == '<front>') {
-            options.path = '/';
-          } else {
-            options.path = '/' + step.path;
+          options.path = '/';
+          if (step.path.trim() != '<front>') {
+            if (!tourConfig.cleanUrls) {
+              options.path += '?q=' // Don't need the first / in this case.
+            }
+            options.path += step.path;
           }
           if (!(tourConfig.isFirstStep && index == 0) && step.path.indexOf('?tour') === -1 && step.path.indexOf('&tour') === -1) {
-            options.path += '?tour=' + tourConfig.name + '&step=' + index;
+            if (!tourConfig.cleanUrls) {
+              options.path += '&';
+            } else {
+              options.path += '?';
+            }
+            options.path += 'tour=' + tourConfig.name + '&step=' + index;
           }
         }
         if (step.selector == '') {

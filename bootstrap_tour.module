@@ -44,6 +44,7 @@ function bootstrap_tour_run_tour($name, $force = FALSE) {
     $step['content'] = check_markup($step['content'], $step['format']);
   }
   $tour->force = $force;
+  $tour->cleanUrls = variable_get('clean_url', 0);
 
   drupal_add_js(array('bootstrapTour' => array('tour' => $tour)), 'setting');
 
