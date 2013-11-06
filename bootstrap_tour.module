@@ -91,7 +91,7 @@ function bootstrap_tour_page_build(&$page) {
         $tour->steps = unserialize($tour->steps);
       }
       $path = $tour->steps[0]['path'];
-      if ($path == current_path() || $path == request_path()) {
+      if ($path == current_path() || $path == request_path() || ($path == '<front>' && request_path() == '')) {
         bootstrap_tour_run_tour($tour->name);
       }
     }
