@@ -103,13 +103,6 @@ function bootstrap_tour_page_build(&$page) {
  */
 function bootstrap_tour_menu() {
   $items = array();
-  $items['admin/build/tours'] = array(
-    'title' => 'Site Tours',
-    'description' => 'Create, edit and delete guided site tours',
-    'page callback' => 'bootstrap_tour_list',
-    'access arguments' => array('administer bootstrap tours'),
-    'type' => MENU_NORMAL_ITEM,
-  );
   $items['admin/structure/tours'] = array(
     'title' => 'Site Tours',
     'description' => 'Create, edit and delete guided site tours',
