@@ -66,7 +66,7 @@
             }
             options.path += 'tour=' + tourConfig.name;
             if (!(tourConfig.isFirstStep && index == 0)) {
-              options.path += + '&step=' + index;
+              options.path += '&step=' + index;
             }
           }
         }
