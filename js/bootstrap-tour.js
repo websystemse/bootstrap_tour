@@ -66,7 +66,7 @@
               // Newer versions have a this.getCurrentStep() function - this is for backcompat.
               currentIndex = this._current,
               nextStep = this.getStep(currentIndex + 1),
-              nextPath = cleanPath(basePath + nextStep.path),
+              nextPath = nextStep ? cleanPath(basePath + nextStep.path) : '',
               cleanedPath = cleanPath(path);
 
           // If we haven't shown a single step and bootstrap tour is trying to
