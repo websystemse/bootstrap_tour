@@ -76,7 +76,6 @@
         } else {
           options.element = step.selector;
         }
-        console.log(options);
         t.addSteps([options])
 
       });
