@@ -430,7 +430,7 @@ function bootstrap_tour_list() {
 
   foreach ($names as $name => $tour) {
     $row = array();
-    $row[] = array('data' => $tour->title);
+    $row[] = array('data' => check_plain($tour->title));
     $row[] = array('data' => l(t('edit'), 'admin/structure/tours/manage/' . $name));
     if (!bootstrap_tour_is_default($tour->name)) {
       $row[] = array('data' => l(t('delete'), 'admin/structure/tours/manage/' . $name . '/delete'));
