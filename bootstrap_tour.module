@@ -13,7 +13,7 @@ function bootstrap_tour_entity_info() {
     'label' => t('Site Tour'),
     'entity class' => 'Entity',
     'controller class' => 'BootstrapTourEntityController',
-    'base table' => 'bootstrap_tour',
+    'base table' => 'bootstrap_tour_tour',
     'fieldable' => TRUE,
     'exportable' => TRUE,
     'entity keys' => array(
@@ -219,7 +219,7 @@ function bootstrap_tour_run_tour($id, $force = FALSE) {
     global $base_url;
     $base = parse_url($base_url);
     drupal_add_css($base['scheme'] . '://cdnjs.cloudflare.com/ajax/libs/bootstrap-tour/0.6.1/css/bootstrap-tour.min.css', 'external');
-    drupal_add_js($base['scheme'] . '://cdnjs.cloudflare.com/ajax/libs/bootstrap-tour/0.6.1/js/bootstrap-tour.min.js', 'external');
+    drupal_add_js($base['scheme'] . '://cdnjs.cloudflare.com/ajax/libs/bootstrap-tour/0.6.1/js/bootstrap-tour.js', 'external');
   }
 
   drupal_add_js(drupal_get_path('module', 'bootstrap_tour') . '/js/bootstrap-tour.js');
@@ -290,17 +290,17 @@ function bootstrap_tour_end_current_tour() {
  */
 function bootstrap_tour_load_config($include_disabled = FALSE) {
   if (!$include_disabled) {
-    $tours = db_query('SELECT bootstrap_tour_id, name, autorun, start_path FROM {bootstrap_tour} WHERE enabled = 1')->fetchAllAssoc('bootstrap_tour_id');
+    $tours = db_query('SELECT bootstrap_tour_id, name, autorun, start_path FROM {bootstrap_tour_tour} WHERE enabled = 1')->fetchAllAssoc('bootstrap_tour_id');
   }
   else {
-    $tours = db_query('SELECT bootstrap_tour_id, name, autorun, start_path FROM {bootstrap_tour}')->fetchAllAssoc('bootstrap_tour_id');
+    $tours = db_query('SELECT bootstrap_tour_id, name, autorun, start_path FROM {bootstrap_tour_tour}')->fetchAllAssoc('bootstrap_tour_id');
   }
 
   return $tours;
 }
 
 /**
- * Callback function to load a complete bootstrap tour, including all steps, by id.
+ * Callback function to{bo load a complete bootstrap tour, including all steps, by id.
  */
 function bootstrap_tour_load($id) {
   $tour = entity_load('bootstrap_tour', array($id), array(), FALSE);

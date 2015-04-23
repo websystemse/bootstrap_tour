@@ -80,7 +80,7 @@ function bootstrap_tour_form($form, &$form_state, $tour = NULL) {
     '#type' => 'submit',
     '#value' => t('Save Tour'),
     '#weight' => 20,
-    '#suffix' => l('Cancel', 'admin/structure/tours'),
+    '#suffix' => ' ' . l('Cancel', 'admin/structure/tours'),
   );
   return $form;
 }
@@ -111,6 +111,6 @@ function bootstrap_tour_form_submit($form, &$form_state) {
 /* Function to check if the machine name already exists.
  */
 function _bootstrap_tour_name_exists($name, $element, &$form_state) {
-  $result = db_query('SELECT bootstrap_tour_id from {bootstrap_tour} WHERE name = :name LIMIT 1', array(':name' => $name));
+  $result = db_query('SELECT bootstrap_tour_id from {bootstrap_tour_tour} WHERE name = :name LIMIT 1', array(':name' => $name));
   return ($result->rowCount()==0 ? FALSE : TRUE);
 }

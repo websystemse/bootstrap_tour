@@ -4,8 +4,10 @@
  * @file
  * Defines the inline entity form controller for BootstrapTourStep entities.
  */
- 
+
 /**
+ * Class BootstrapTourEntityController
+ *
  * Ensure Bootstrap Tours are imported and exported with tour steps.
  */
 class BootstrapTourEntityController extends EntityAPIControllerExportable {
@@ -47,15 +49,15 @@ class BootstrapTourEntityController extends EntityAPIControllerExportable {
 }
 
 /**
- * UI controller.
+ * Class BootstrapTourUIController
+ *
+ * Adjust the table headers when viewing the overview page.
  */
 class BootstrapTourUIController extends EntityDefaultUIController {
   /**
    * Overrides EntityDefaultUIController::overviewTableHeaders().
    */
   protected function overviewTableHeaders($conditions, $rows, $additional_header = array()) {
-    $headers = parent::overviewTableHeaders($conditions, $rows, $additional_header);
-
     $additional_header[] = t('Enabled');
     $additional_header[] = t('Description');
     $additional_header[] = t('# Steps');
@@ -83,6 +85,12 @@ class BootstrapTourUIController extends EntityDefaultUIController {
   }
 
 }
+
+/**
+ * Class BootstrapTourStepInlineEntityFormController
+ *
+ * Adjusts the Inline Entity Form used for adding/editing/removing tour steps.
+ */
 class BootstrapTourStepInlineEntityFormController extends EntityInlineEntityFormController {
 
   /**
@@ -126,7 +134,6 @@ class BootstrapTourStepInlineEntityFormController extends EntityInlineEntityForm
    */
   public function entityForm($entity_form, &$form_state) {
     $step = $entity_form['#entity'];
-    $extra_fields = field_info_extra_fields('bootstrap_tour', 'bootstrap_tour', 'form');
 
     $entity_form['path'] = array(
       '#type' => 'textfield',
