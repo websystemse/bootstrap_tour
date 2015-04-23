@@ -130,6 +130,12 @@
           options.orphan = true;
         } else {
           options.element = step.selector;
+          options.onShown = function (tour) {
+            $(options.element).addClass('bootstrap-tour-selected');
+          };
+          options.onHidden = function (tour) {
+            $(options.element).removeClass('bootstrap-tour-selected');
+          };
         }
         t.addSteps([options])
 

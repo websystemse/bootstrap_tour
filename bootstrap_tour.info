@@ -1,6 +1,12 @@
-name = Bootstrap tour
-description = Provides Bootstrap-based tours to guide users through navigations of the site
+name = Entity Bootstrap Tour
+description = "An entity based version of the bootstrap tour module."
 core = 7.x
+package = Bootstrap
 
 dependencies[] = jquery_update
 dependencies[] = ctools
+dependencies[] = entity
+dependencies[] = entityreference
+dependencies[] = inline_entity_form
+
+files[] = includes/bootstrap_tour.controller.inc

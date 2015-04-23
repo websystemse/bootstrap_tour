@@ -1,73 +1,187 @@
 <?php
+/**
+ * @file
+ * Install, update, and uninstall functions for lawmakers
+ */
 
+/**
+ * Implements hook_requirements().
+ */
+function bootstrap_tour_requirements($phase) {
+  $requirements = array();
+  if ($phase == 'runtime') {
+    $requirements['bootstrap_tour_field_exists'] = array(
+      'title' => t('Bootstrap Tour Entityreference Field Exists'), 
+      'severity' => REQUIREMENT_OK, 
+      'value' => t('Doesn\'t Exist'),
+    );
+
+    $field_name = 'bootstrap_tour_step_reference';
+    if (field_info_field('bootstrap_tour_step_reference')) {
+      $requirements['bootstrap_tour_field_exists']['description'] = t('Unable to create required entityreference field \'bootstrap_tour_step_reference\'. A field with that name already exists.');
+      $requirements['bootstrap_tour_field_exists']['severity'] = REQUIREMENT_ERROR;
+      $requirements['bootstrap_tour_field_exists']['value'] = t('Field Exists');
+    }
+  }
+
+  return $requirements;
+}
+
+/**
+ * Implements hook_schema().
+ */
 function bootstrap_tour_schema() {
+  $schema = array();
+
   $schema['bootstrap_tour'] = array(
     'description' => t('Bootstrap tours courtesy of the Bootstrap Tours module'),
-    'export' => array(
-      'primary_key' => 'name',
-      'api' => array(
-        'owner' => 'bootstrap_tour',
-        'api' => 'bootstrap_tour_tour',
-        'minimum_version' => '1',
-        'current_version' => '1',
-      ),
-    ),
     'fields' => array(
-      'name' => array(
-        'type' => 'varchar',
-        'length' => '255',
-        'description' => 'Unique ID for tours used to identify them programmatically, generated from the name.',
-      ),
-      'title' => array(
-        'type' => 'varchar',
-        'length' => '255',
-        'description' => 'Human readable name for the tour used for administrative purposes.',
-      ),
-      'roles' => array(
-        'type' => 'varchar',
-        'length' => '255',
-        'description' => 'A comma separated list of roles that can access this tour.',
-      ),
-      'btid' => array(
+      'bootstrap_tour_id' => array(
+        'description' => 'Primary ID field for the table. Not used for anything except internal lookups.',
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
-        'description' => 'Primary ID field for the table. Not used for anything except internal lookups.',
         'no export' => TRUE,
       ),
+      'title' => array(
+        'description' => 'Human readable name for the tour used for administrative purposes.',
+        'type' => 'varchar',
+        'length' => '255',
+      ),
+      'name' => array(
+        'description' => 'Unique ID for tours used to identify them programmatically, generated from the name.',
+        'type' => 'varchar',
+        'length' => '255',
+      ),
+      'description' => array(
+        'description' => 'A description of the site tour, used for administrative purposes.',
+        'type' => 'varchar',
+        'length' => '255',
+      ),
+      'roles' => array(
+        'description' => 'A comma separated list of roles that can access this tour.',
+        'type' => 'varchar',
+        'length' => '255',
+      ),
       'autorun' => array(
-        'description' => 'Boolean indicating whether the tour should automatically start when the path of the first step is loaded.',
+        'description' => 'Boolean indicating whether the tour should automatically start when the start path is visited.',
         'type' => 'int',
         'not null' => TRUE,
         'default' => 1,
       ),
-      'description' => array(
+      'start_path' => array(
+        'description' => 'The path at which the tour should begin.',
         'type' => 'varchar',
         'length' => '255',
-        'description' => 'A description of the site tour, used for administrative purposes.',
       ),
-      'steps' => array(
-        'type' => 'blob',
-        'description' => 'A serialized array of tour steps.',
-        'serialize' => TRUE,
+      'enabled' => array(
+        'description' => 'Boolean indicating whether the tour is enabled or disabled.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
       ),
-    ),
-    'primary key' => array('btid'),
+    ) + entity_exportable_schema_fields(),
+    'primary key' => array('bootstrap_tour_id'),
     'unique keys' => array(
       'name' => array('name'),
     ),
   );
+
+  $schema['bootstrap_tour_step'] = array(
+    'description' => t('Individual Bootstrap tour steps for Bootstrap Tours (many-to-one).'),
+    'fields' => array(
+      'bootstrap_tour_step_id' => array(
+        'description' => 'Primary ID field for the table. Not used for anything except internal lookups.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'no export' => TRUE,
+      ),
+      'path' => array(
+        'description' => 'The path upon which the step should be displayed.',
+        'type' => 'varchar',
+        'length' => '255',
+      ),
+      'selector' => array(
+        'description' => 'The CSS Selector to which the step should be attached.',
+        'type' => 'varchar',
+        'length' => '255',
+      ),
+      'placement' => array(
+        'description' => 'Location of the popup.',
+        'type' => 'varchar',
+        'length' => '6',
+      ),
+      'title' => array(
+        'description' => 'Title of the popup.',
+        'type' => 'varchar',
+        'length' => '255',
+      ),
+      'content' => array(
+        'description' => 'Content of the popup.',
+        'type' => 'text',
+        'size' => 'big',
+      ),
+      'content_text_format' => array(
+        'description' => 'The text format of the content field.',
+        'type' => 'varchar',
+        'length' => '255',
+      ),
+    ),
+    'primary key' => array('bootstrap_tour_step_id'),
+  );
+
   return $schema;
 }
 
-/**
- * Add a "roles" column to the DB schema.
- */
-function bootstrap_tour_update_7001(&$sandbox) {
-  $roles = array(
-    'type' => 'varchar',
-    'length' => '255',
-    'description' => 'A comma separated list of roles that can access this tour.',
+function bootstrap_tour_install() {
+  $field = array(
+    'field_name' => 'bootstrap_tour_step_reference',
+    'type' => 'entityreference',
+    'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+    'settings' => array(
+      'target_type' => 'bootstrap_tour_step',
+      'handler_settings' => array('target_bundles' => NULL),
+    ),
   );
-  db_add_field('bootstrap_tour', 'roles', $roles);
+  field_create_field($field);
+
+  $instance = array(
+    'field_name' => 'bootstrap_tour_step_reference',
+    'entity_type' => 'bootstrap_tour',
+    'bundle' => 'bootstrap_tour',
+    'label' => 'Tour Steps',
+    'widget' => array(
+      'weight' => '10',
+      'type' => 'inline_entity_form',
+      'module' => 'inline_entity_form',
+      'active' => 1,
+      'settings' => array(
+        'fields' => array(),
+        'type_settings' => array(
+          'allow_existing' => 0,
+          'match_operator' => 'CONTAINS',
+          'delete_references' => 1,
+          'override_labels' => 1,
+          'label_singular' => 'step',
+          'label_plural' => 'steps',
+        ),
+      ),
+    ),
+    'settings' => array(
+      'target_type' => 'bootstrap_tour_step',
+      'handler_settings' => array('target_bundles' => NULL),
+    ),
+    'display' => array(
+      'default' => array('label' => 'inline', 'type' => 'entityreference_label'),
+    ),
+  );
+  field_create_instance($instance); 
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function bootstrap_tour_uninstall() {
+  field_attach_delete_bundle('bootstrap_tour', 'bootstrap_tour');
 }
