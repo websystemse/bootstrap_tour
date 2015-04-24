@@ -1,5 +1,5 @@
-name = Entity Bootstrap Tour
-description = "An entity based version of the bootstrap tour module."
+name = Bootstrap Tour
+description = Guided site tours powered by the Bootstrap Tours JS/CSS library
 core = 7.x
 package = Bootstrap
 

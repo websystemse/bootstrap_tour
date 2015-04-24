@@ -1,29 +1,74 @@
 <?php
-/**
- * @file
- * Install, update, and uninstall functions for lawmakers
- */
 
 /**
- * Implements hook_requirements().
+ * Implements hook_install().
  */
-function bootstrap_tour_requirements($phase) {
-  $requirements = array();
-  if ($phase == 'runtime') {
-    $requirements['bootstrap_tour_field_exists'] = array(
-      'title' => t('Bootstrap Tour Entityreference Field Exists'), 
-      'severity' => REQUIREMENT_OK, 
-      'value' => t('Doesn\'t Exist'),
-    );
+function bootstrap_tour_install() {
+  bootstrap_tour_setup_step_field();
+}
 
-    if (field_info_field('bootstrap_tour_step_reference')) {
-      $requirements['bootstrap_tour_field_exists']['description'] = t('Unable to create required entityreference field \'bootstrap_tour_step_reference\'. A field with that name already exists.');
-      $requirements['bootstrap_tour_field_exists']['severity'] = REQUIREMENT_ERROR;
-      $requirements['bootstrap_tour_field_exists']['value'] = t('Field Exists');
-    }
+/**
+ * Implements hook_uninstall().
+ */
+function bootstrap_tour_uninstall() {
+  field_attach_delete_bundle('bootstrap_tour', 'bootstrap_tour');
+}
+
+/**
+ * Upgrade old 1.x tours to the new 2.x Entity format, then delete the old DB table.
+ */
+function bootstrap_tour_update_7200() {
+
+  if (!module_exists('inline_entity_form')) {
+    // If you drop in 2.x and try to run updates, Drupal won't complain even though
+    // 2.x has a hard dependency on Inline Entity Form. So, we check for that explicitly.
+    throw new DrupalUpdateException(t('Bootstrap Tour 2.x requires the Inline Entity Form module which is not installed.'));
+    return;
   }
 
-  return $requirements;
+  // First we need to create the two new tables.
+  db_create_table('bootstrap_tour_tour', bootstrap_tour_db_tour_table());
+  db_create_table('bootstrap_tour_step', bootstrap_tour_db_step_table());
+  bootstrap_tour_setup_step_field();
+
+  // Now we need to load all of the 1.x tours and re-save them as 2.x entities.
+  $old_tours = bootstrap_tour_load_legacy_tours();
+  foreach ($old_tours as $tour) {
+    $tour = (array) $tour;
+    $steps = $tour['steps'];
+    unset($tour['steps']);
+
+    // Steps are their own entities now so we need to save them as such.
+    foreach ($steps as $index => $step) {
+      $new_step = entity_create('bootstrap_tour_step', array (
+        'path' => isset($step['path']) ? $step['path'] : '',
+        'selector' => $step['selector'],
+        'placement' => $step['placement'],
+        'title' => $step['title'],
+        'content' => $step['content'],
+        'content_text_format' => $step['format'],
+      ));
+      $new_step->save();
+      if (!empty($new_step->bootstrap_tour_step_id)) {
+        $tour['bootstrap_tour_step_reference'][LANGUAGE_NONE][$index]['target_id'] = $new_step->bootstrap_tour_step_id;
+      }
+    }
+
+    $entity = entity_create('bootstrap_tour', $tour);
+    $entity->save();
+  }
+
+  // Now we need to make sure the numbers of old vs. new match so that we can be sure
+  // the upgrade went successfully. If so, we can delete the old DB table.
+  $new_tours = entity_load('bootstrap_tour');
+
+  if (count($new_tours) === count($old_tours)) {
+    db_drop_table('bootstrap_tour');
+    return t('If you have any Tours in exported Features, you will have to recreate them now.');
+  } else {
+    throw new DrupalUpdateException(t('Bootstrap Tour failed to upgrade old tours to the new format.'));
+  }
+
 }
 
 /**
@@ -42,70 +87,28 @@ function bootstrap_tour_schema() {
     // won't delete the table if it already exists?" and you're a very smart and
     // wise person. The answer is that we need to keep this in hook_schema()
     // because we need the "export" key to exist on it (which you can see below),
-    // otherwise the ctools functions to load default/featurized
-    // tours don't know that they exist and just return NULL. And since we need to load
-    // legacy tours as part of the migrating to the new 2.x tables, we need ctools to know
+    // otherwise the ctools function to load default/featurized/exported/in-code
+    // tours doesn't know that they exist and just returns NULL. And since we need to load
+    // legacy 1.x tours as part of the migrating to the new 2.x tables, we need ctools to know
     // about it until that migration is complete.
-    $schema['bootstrap_tour'] = array(
-      'description' => t('Bootstrap tours courtesy of the Bootstrap Tours module'),
-      'export' => array(
-        'primary_key' => 'name',
-        'api' => array(
-          'owner' => 'bootstrap_tour',
-          'api' => 'bootstrap_tour_tour',
-          'minimum_version' => '1',
-          'current_version' => '1',
-        ),
-      ),
-      'fields' => array(
-        'name' => array(
-          'type' => 'varchar',
-          'length' => '255',
-          'description' => 'Unique ID for tours used to identify them programmatically, generated from the name.',
-        ),
-        'title' => array(
-          'type' => 'varchar',
-          'length' => '255',
-          'description' => 'Human readable name for the tour used for administrative purposes.',
-        ),
-        'roles' => array(
-          'type' => 'varchar',
-          'length' => '255',
-          'description' => 'A comma separated list of roles that can access this tour.',
-        ),
-        'btid' => array(
-          'type' => 'serial',
-          'unsigned' => TRUE,
-          'not null' => TRUE,
-          'description' => 'Primary ID field for the table. Not used for anything except internal lookups.',
-          'no export' => TRUE,
-        ),
-        'autorun' => array(
-          'description' => 'Boolean indicating whether the tour should automatically start when the path of the first step is loaded.',
-          'type' => 'int',
-          'not null' => TRUE,
-          'default' => 1,
-        ),
-        'description' => array(
-          'type' => 'varchar',
-          'length' => '255',
-          'description' => 'A description of the site tour, used for administrative purposes.',
-        ),
-        'steps' => array(
-          'type' => 'blob',
-          'description' => 'A serialized array of tour steps.',
-          'serialize' => TRUE,
-        ),
-      ),
-      'primary key' => array('btid'),
-      'unique keys' => array(
-        'name' => array('name'),
-      ),
-    );
+    //
+    // @see bootstrap_tour_load_legacy_tours();
+    $schema['bootstrap_tour'] = bootstrap_tour_db_legacy_table();
   }
 
+  $schema['bootstrap_tour_tour'] = bootstrap_tour_db_tour_table();
+  $schema['bootstrap_tour_step'] = bootstrap_tour_db_step_table();
 
-  $schema['bootstrap_tour_tour'] = array(
+  return $schema;
+}
+
+/**
+ * Returns the table definition for the table which holds the tours.
+ *
+ * @return array
+ */
+function bootstrap_tour_db_tour_table() {
+  return array(
     'description' => t('Bootstrap tours courtesy of the Bootstrap Tours module'),
     'fields' => array(
       'bootstrap_tour_id' => array(
@@ -158,8 +161,15 @@ function bootstrap_tour_schema() {
       'name' => array('name'),
     ),
   );
+}
 
-  $schema['bootstrap_tour_step'] = array(
+/**
+ * Returns the table definition for the table which holds the tour steps.
+ *
+ * @return array
+ */
+function bootstrap_tour_db_step_table() {
+  return array(
     'description' => t('Individual Bootstrap tour steps for Bootstrap Tours (many-to-one).'),
     'fields' => array(
       'bootstrap_tour_step_id' => array(
@@ -202,11 +212,73 @@ function bootstrap_tour_schema() {
     ),
     'primary key' => array('bootstrap_tour_step_id'),
   );
-
-  return $schema;
 }
 
-function bootstrap_tour_install() {
+/**
+ * Returns the table definition for the legacy/deprecated table which held tours in 1.x.
+ *
+ * @return array
+ */
+function bootstrap_tour_db_legacy_table() {
+  return array(
+    'description' => t('Bootstrap tours courtesy of the Bootstrap Tours module'),
+    'export' => array(
+      'primary_key' => 'name',
+      'api' => array(
+        'owner' => 'bootstrap_tour',
+        'api' => 'bootstrap_tour_tour',
+        'minimum_version' => '1',
+        'current_version' => '1',
+      ),
+    ),
+    'fields' => array(
+      'name' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'description' => 'Unique ID for tours used to identify them programmatically, generated from the name.',
+      ),
+      'title' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'description' => 'Human readable name for the tour used for administrative purposes.',
+      ),
+      'roles' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'description' => 'A comma separated list of roles that can access this tour.',
+      ),
+      'btid' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary ID field for the table. Not used for anything except internal lookups.',
+        'no export' => TRUE,
+      ),
+      'autorun' => array(
+        'description' => 'Boolean indicating whether the tour should automatically start when the path of the first step is loaded.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'description' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'description' => 'A description of the site tour, used for administrative purposes.',
+      ),
+      'steps' => array(
+        'type' => 'blob',
+        'description' => 'A serialized array of tour steps.',
+        'serialize' => TRUE,
+      ),
+    ),
+    'primary key' => array('btid'),
+    'unique keys' => array(
+      'name' => array('name'),
+    ),
+  );
+}
+
+function bootstrap_tour_setup_step_field() {
   $field = array(
     'field_name' => 'bootstrap_tour_step_reference',
     'type' => 'entityreference',
@@ -248,12 +320,16 @@ function bootstrap_tour_install() {
       'default' => array('label' => 'inline', 'type' => 'entityreference_label'),
     ),
   );
-  field_create_instance($instance); 
+  field_create_instance($instance);
 }
 
 /**
- * Implements hook_uninstall().
+ * Legacy function which loads all 1.x tours from both exported Features and from the DB.
+ * 
+ * @return array
  */
-function bootstrap_tour_uninstall() {
-  field_attach_delete_bundle('bootstrap_tour', 'bootstrap_tour');
+function bootstrap_tour_load_legacy_tours() {
+  ctools_include('export');
+  $tours = ctools_export_crud_load_all('bootstrap_tour');
+  return $tours;
 }
