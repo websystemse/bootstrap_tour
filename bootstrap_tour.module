@@ -30,6 +30,16 @@ function bootstrap_tour_entity_info() {
     'module' => 'bootstrap_tour',
     'access callback' => 'bootstrap_tour_access',
     'views controller class' => 'EntityDefaultViewsController',
+    'bundles' => array(
+      // Entity defaults to entity type for single bundles.
+      'bootstrap_tour' => array(
+        'label' => t('Site Tour'),
+        'admin' => array(
+          'path' => 'admin/structure/tours',
+          'access arguments' => array('administer bootstrap tours'),
+        ),
+      ),
+    ),
   );
   $bootstrap_tour_entity_info['bootstrap_tour_step'] = array(
     'label' => t('Site Tour Step'),
