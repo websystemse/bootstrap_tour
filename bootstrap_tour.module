@@ -28,7 +28,7 @@ function bootstrap_tour_entity_info() {
       'file' => 'includes/bootstrap_tour.admin.inc',
     ),
     'module' => 'bootstrap_tour',
-    'access callback' => 'bootstrap_tour_access',
+    'access callback' => 'bootstrap_tour_admin_access',
     'views controller class' => 'EntityDefaultViewsController',
     'bundles' => array(
       // Entity defaults to entity type for single bundles.
@@ -54,7 +54,7 @@ function bootstrap_tour_entity_info() {
     ),
     'static cache' => TRUE,
     'module' => 'bootstrap_tour',
-    'access callback' => 'bootstrap_tour_access',
+    'access callback' => 'bootstrap_tour_admin_access',
     'views controller class' => 'EntityDefaultViewsController',
     'inline entity form' => array(
       'controller' => 'BootstrapTourStepInlineEntityFormController',
@@ -99,7 +99,7 @@ function bootstrap_tour_permission() {
 /**
  * Bootstrap Tour access callback.
  */
-function bootstrap_tour_access($op, $tour = NULL, $account = NULL) {
+function bootstrap_tour_admin_access($op, $tour = NULL, $account = NULL) {
   return user_access('administer bootstrap tours', $account);
 }
 
@@ -164,20 +164,8 @@ function bootstrap_tour_run_tour($id, $force = FALSE) {
 
   $tour = bootstrap_tour_load($id);
 
-  if (empty($tour) || empty($tour->enabled)) {
+  if (!bootstrap_tour_access($tour)) {
     return;
-  }
-
-  if (!empty($tour->roles)) {
-    // Compare the tour's roles to the user's roles and if there aren't any overlaps and
-    // the user isn't user 1, cancel running the tour.
-    global $user;
-    $tour_roles = explode(',', $tour->roles);
-    $user_roles = array_keys($user->roles);
-    $compare = array_intersect($tour_roles, $user_roles);
-    if ($user->uid != 1 && empty($compare)) {
-      return;
-    }
   }
 
   if (count($tour->steps) > 1) {
@@ -354,4 +342,41 @@ function bootstrap_tour_bootstrap_tour_insert($tour) {
 function bootstrap_tour_bootstrap_tour_update($tour) {
   cache_clear_all('bootstrap_tours_all', 'cache');
   drupal_static_reset('bootstrap_tour_load_all');
+}
+
+/**
+ * Checks access for user for tour.
+ *
+ * @param
+ *  Loaded tour event.
+ * @param $account
+ *  An account object, default to current user.
+ *
+ * @return
+ *  True if user has access, false if they don't.
+ */
+function bootstrap_tour_access($tour, $account = NULL) {
+  if (!$account) {
+    global $user;
+    $account = $user;
+  }
+  if (empty($tour) || empty($tour->enabled)) {
+    return FALSE;
+  }
+
+  $access = TRUE;
+
+  if ($account->uid != 1 && !empty($tour->roles)) {
+    // Compare the tour's roles to the user's roles and if there aren't any overlaps and
+    // the user isn't user 1, cancel running the tour.
+    $tour_roles = explode(',', $tour->roles);
+    $account_roles = array_keys($account->roles);
+    $compare = array_intersect($tour_roles, $account_roles);
+    if (empty($compare)) {
+      $access = FALSE;
+    }
+  }
+
+  $access_array = module_invoke_all('bootstrap_tour_access', $tour, $account, $access);
+  return !in_array(FALSE, $access_array, TRUE) && $access;
 }
