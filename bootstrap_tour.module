@@ -313,14 +313,18 @@ function bootstrap_tour_load($id) {
 /**
  * Load all the tours (and caches them).
  */
-function bootstrap_tour_load_all() {
+function bootstrap_tour_load_all($reset = FALSE) {
   $all_tours = &drupal_static(__FUNCTION__);
-  if (!isset($all_tours)) {
-    if ($cache = cache_get('bootstrap_tours_all')) {
+  if (!isset($all_tours)|| $reset) {
+    if (!$reset && ($cache = cache_get('bootstrap_tours_all'))) {
       $all_tours = $cache->data;
     }
     else {
       $all_tours = entity_load('bootstrap_tour');
+      foreach ($all_tours as $id => $tour) {
+        $wrapper = entity_metadata_wrapper('bootstrap_tour', $tour);
+        $all_tours[$id]->steps = $wrapper->bootstrap_tour_step_reference->value();
+      }
       cache_set('bootstrap_tours_all', $all_tours);
     }
   }
