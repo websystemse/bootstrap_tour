@@ -310,3 +310,34 @@ function bootstrap_tour_load($id) {
 
   return $tour;
 }
+/**
+ * Load all the tours (and caches them).
+ */
+function bootstrap_tour_load_all() {
+  $all_tours = &drupal_static(__FUNCTION__);
+  if (!isset($all_tours)) {
+    if ($cache = cache_get('bootstrap_tours_all')) {
+      $all_tours = $cache->data;
+    }
+    else {
+      $all_tours = entity_load('bootstrap_tour');
+      cache_set('bootstrap_tours_all', $all_tours);
+    }
+  }
+  return $all_tours;
+}
+
+/**
+ * Implements hook_bootstrap_tour_insert().
+ */
+function bootstrap_tour_bootstrap_tour_insert($tour) {
+  bootstrap_tour_bootstrap_tour_update($tour);
+}
+
+/**
+ * Implements hook_bootstrap_tour_insert().
+ */
+function bootstrap_tour_bootstrap_tour_update($tour) {
+  cache_clear_all('bootstrap_tours_all', 'cache');
+  drupal_static_reset('bootstrap_tour_load_all');
+}
