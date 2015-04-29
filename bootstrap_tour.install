@@ -18,12 +18,25 @@ function bootstrap_tour_uninstall() {
  * Upgrade old 1.x tours to the new 2.x Entity format, then delete the old DB table.
  */
 function bootstrap_tour_update_7200() {
-
-  if (!module_exists('inline_entity_form')) {
+  module_load_include('inc', 'inline_entity_form', 'includes/entity.inline_entity_form');
+  module_load_include('inc', 'bootstrap_tour', 'includes/bootstrap_tour.controller');
+  if (!module_exists('inline_entity_form') && !module_enable(array('inline_entity_form'))) {
     // If you drop in 2.x and try to run updates, Drupal won't complain even though
     // 2.x has a hard dependency on Inline Entity Form. So, we check for that explicitly.
     throw new DrupalUpdateException(t('Bootstrap Tour 2.x requires the Inline Entity Form module which is not installed.'));
     return;
+  }
+  // Rename bootstrap_tour table so doesn't conflict
+  // @see bootstrap_tour_schema().
+  if (db_table_exists('bootstrap_tour')) {
+    db_rename_table('bootstrap_tour', 'bootstrap_tour_old');
+    drupal_get_complete_schema(TRUE);
+    // Make sure relavent caches are clear
+    cache_clear_all('features_api', 'cache');
+    cache_clear_all('entity_info', 'cache', TRUE);
+    drupal_static_reset('entity_get_info');
+    drupal_static_reset('features_get_components');
+    drupal_static_reset('features_get_components_by_key');
   }
 
   // First we need to create the two new tables.
@@ -58,17 +71,19 @@ function bootstrap_tour_update_7200() {
     $entity->save();
   }
 
-  // Now we need to make sure the numbers of old vs. new match so that we can be sure
-  // the upgrade went successfully. If so, we can delete the old DB table.
+  // Now we need to make sure the numbers of old vs. new match so that we can be
+  // sure the upgrade went successfully. If so, we can delete the old DB table.
   $new_tours = entity_load('bootstrap_tour');
 
-  if (count($new_tours) === count($old_tours)) {
-    db_drop_table('bootstrap_tour');
-    return t('If you have any Tours in exported Features, you will have to recreate them now.');
-  } else {
-    throw new DrupalUpdateException(t('Bootstrap Tour failed to upgrade old tours to the new format.'));
+  if ($count = count($old_tours)) {
+    if (count($new_tours) === $count) {
+      db_drop_table('bootstrap_tour_old');
+      return t('If you have any Tours in exported Features, you will have to recreate them now.');
+    }
+    else {
+      throw new DrupalUpdateException(t('Bootstrap Tour failed to upgrade old tours to the new format.'));
+    }
   }
-
 }
 
 /**
@@ -77,23 +92,32 @@ function bootstrap_tour_update_7200() {
 function bootstrap_tour_schema() {
   $schema = array();
 
-  if (db_table_exists('bootstrap_tour')) {
-    // Legacy compatibility. If the 'bootstrap_tour' table exists, then we need to keep it
-    // temporarily, so that we can migrate from it to the new 'bootstrap_tour_tour'
-    // and 'bootstrap_tour_step' tables. Once that migration is complete, the update hook
-    // will delete this table, and then it will be gone forever.
-    //
-    // You may be saying "why not remove this from hook_schema() though, since that
-    // won't delete the table if it already exists?" and you're a very smart and
-    // wise person. The answer is that we need to keep this in hook_schema()
-    // because we need the "export" key to exist on it (which you can see below),
-    // otherwise the ctools function to load default/featurized/exported/in-code
-    // tours doesn't know that they exist and just returns NULL. And since we need to load
-    // legacy 1.x tours as part of the migrating to the new 2.x tables, we need ctools to know
-    // about it until that migration is complete.
-    //
-    // @see bootstrap_tour_load_legacy_tours();
-    $schema['bootstrap_tour'] = bootstrap_tour_db_legacy_table();
+  if (db_table_exists('bootstrap_tour_old')) {
+    /**
+     * Legacy compatibility. If the 'bootstrap_tour' table exists, then we need
+     * to keep it temporarily, so that we can migrate from it to the new
+     * 'bootstrap_tour_tour' and 'bootstrap_tour_step' tables. Once that
+     * migration is complete, the update hook will delete this table, and then
+     * it will be gone forever.
+     *
+     * You may be saying "why not remove this from hook_schema() though, since
+     * that won't delete the table if it already exists?" and you're a very
+     * smart and wise person. The answer is that we need to keep this in
+     * hook_schema() because we need the "export" key to exist on it (which you
+     * can see below), otherwise the ctools function to load default/featurized/
+     * exported/in-code tours doesn't know that they exist and just returns NULL.
+     * And since we need to load legacy 1.x tours as part of the migrating to
+     * the new 2.x tables, we need ctools to know about it until that migration
+     * is complete.
+     *
+     * However, we can't actually name it bootstrap_tour because then
+     * features makes a boostrap_tour_features_api function that returns
+     * it as a key, which conflicts with the one entity creates and causes
+     * update errors.
+     *
+     * @see bootstrap_tour_load_legacy_tours();
+     */
+    $schema['bootstrap_tour_old'] = bootstrap_tour_db_legacy_table();
   }
 
   $schema['bootstrap_tour_tour'] = bootstrap_tour_db_tour_table();
@@ -230,6 +254,7 @@ function bootstrap_tour_db_legacy_table() {
         'minimum_version' => '1',
         'current_version' => '1',
       ),
+      'default hook' => 'default_bootstrap_tour',
     ),
     'fields' => array(
       'name' => array(
@@ -330,6 +355,6 @@ function bootstrap_tour_setup_step_field() {
  */
 function bootstrap_tour_load_legacy_tours() {
   ctools_include('export');
-  $tours = ctools_export_crud_load_all('bootstrap_tour');
+  $tours = ctools_export_crud_load_all('bootstrap_tour_old');
   return $tours;
 }
