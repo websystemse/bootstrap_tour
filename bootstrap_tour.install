@@ -68,6 +68,7 @@ function bootstrap_tour_update_7200() {
     }
 
     $entity = entity_create('bootstrap_tour', $tour);
+    $entity->old_tour = $tour;
     $entity->save();
   }
 
