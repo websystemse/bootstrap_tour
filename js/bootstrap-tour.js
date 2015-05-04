@@ -131,6 +131,7 @@
           options.element = step.selector;
           options.onShown = function (tour) {
             $(options.element).addClass('bootstrap-tour-selected');
+            shown = true;
           };
           options.onHidden = function (tour) {
             $(options.element).removeClass('bootstrap-tour-selected');
