@@ -4,6 +4,8 @@
  * Implements hook_install().
  */
 function bootstrap_tour_install() {
+  module_load_include('inc', 'inline_entity_form', 'includes/entity.inline_entity_form');
+  module_load_include('inc', 'bootstrap_tour', 'includes/bootstrap_tour.controller');
   bootstrap_tour_setup_step_field();
 }
 
