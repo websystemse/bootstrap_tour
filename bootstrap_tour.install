@@ -90,6 +90,26 @@ function bootstrap_tour_update_7200() {
 }
 
 /**
+ * Remove orphaned steps.
+ */
+function bootstrap_tour_update_7201(&$sandbox) {
+  if (!isset($sandbox['total'])) {
+    $sandbox['ids'] = db_query('SELECT * from {bootstrap_tour_step} WHERE bootstrap_tour_step_id NOT in (SELECT bootstrap_tour_step_reference_target_id FROM {field_revision_bootstrap_tour_step_reference})')->fetchCol();
+    $sandbox['total'] = count($sandbox['ids']);
+  }
+  if (!empty($sandbox['ids'])) {
+    $ids = array_splice($sandbox['ids'], 0, 20);
+    entity_delete_multiple('bootstrap_tour_step', $ids);
+    $message = t('Deleted @count orphaned steps, @left to go.', array('@left' => count($sandbox['ids']), '@count' => count($ids)));
+    drupal_set_message($message);
+    if (function_exists('drush_print')) {
+      drush_print($message);
+    }
+  }
+  $sandbox['#finished'] = empty($sandbox['ids']) ? 1 : (($sandbox['total'] - count($sandbox['ids'])) /$sandbox['total']);
+}
+
+/**
  * Implements hook_schema().
  */
 function bootstrap_tour_schema() {
@@ -353,7 +373,7 @@ function bootstrap_tour_setup_step_field() {
 
 /**
  * Legacy function which loads all 1.x tours from both exported Features and from the DB.
- * 
+ *
  * @return array
  */
 function bootstrap_tour_load_legacy_tours() {
