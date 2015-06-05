@@ -92,21 +92,14 @@ function bootstrap_tour_update_7200() {
 /**
  * Remove orphaned steps.
  */
-function bootstrap_tour_update_7201(&$sandbox) {
-  if (!isset($sandbox['total'])) {
-    $sandbox['ids'] = db_query('SELECT * from {bootstrap_tour_step} WHERE bootstrap_tour_step_id NOT in (SELECT bootstrap_tour_step_reference_target_id FROM {field_revision_bootstrap_tour_step_reference})')->fetchCol();
-    $sandbox['total'] = count($sandbox['ids']);
+function bootstrap_tour_update_7201() {
+  $subquery = ' NOT in (SELECT bootstrap_tour_step_reference_target_id FROM {field_revision_bootstrap_tour_step_reference})';
+  foreach (array_keys(field_info_instances('bootstrap_tour_step', 'bootstrap_tour_step')) as $field_name) {
+    db_query("DELETE from {field_data_" . $field_name . "} WHERE entity_type = 'bootstrap_tour_step' AND entity_id " . $subquery);
+    db_query("DELETE from {field_revision_" . $field_name . "} WHERE entity_type = 'bootstrap_tour_step' AND entity_id " . $subquery);
+
   }
-  if (!empty($sandbox['ids'])) {
-    $ids = array_splice($sandbox['ids'], 0, 20);
-    entity_delete_multiple('bootstrap_tour_step', $ids);
-    $message = t('Deleted @count orphaned steps, @left to go.', array('@left' => count($sandbox['ids']), '@count' => count($ids)));
-    drupal_set_message($message);
-    if (function_exists('drush_print')) {
-      drush_print($message);
-    }
-  }
-  $sandbox['#finished'] = empty($sandbox['ids']) ? 1 : (($sandbox['total'] - count($sandbox['ids'])) /$sandbox['total']);
+  db_query('DELETE from {bootstrap_tour_step} WHERE bootstrap_tour_step_id ' . $subquery);
 }
 
 /**
