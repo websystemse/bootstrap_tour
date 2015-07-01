@@ -162,6 +162,18 @@ function bootstrap_tour_libraries_info() {
 }
 
 /**
+ * Remove tour cookies from session
+ */
+function bootstrap_tour_cleanup() {
+  if (isset($_SESSION['tour'])) {
+    unset($_SESSION['tour']);
+  }
+  if (isset($_SESSION['nexttour'])) {
+    unset($_SESSION['nexttour']);
+  }
+}
+
+/**
  * Helper function to actually run a tour. Can be called from anywhere.
  */
 function bootstrap_tour_run_tour($id, $force = FALSE) {
@@ -169,6 +181,16 @@ function bootstrap_tour_run_tour($id, $force = FALSE) {
   $tour = bootstrap_tour_load($id);
 
   if (!bootstrap_tour_access($tour) && empty($tour->steps)) {
+    bootstrap_tour_cleanup();
+    return;
+  }
+
+  if ($tour->autorun && !empty($tour->start_path)) {
+    $tour->steps[0]->path = $tour->start_path;
+  }
+  $first_path = $tour->steps[0]->path;
+  if (empty($first_path)) {
+    bootstrap_tour_cleanup();
     return;
   }
 
@@ -177,17 +199,10 @@ function bootstrap_tour_run_tour($id, $force = FALSE) {
     $_SESSION['tour'] = $tour->name;
   }
 
-  if ($tour->autorun) {
-    $tour->steps[0]->path = $tour->start_path;
-  }
-  $first_path = $tour->steps[0]->path;
-  if (empty($first_path)) {
-    return;
-  }
   if ($first_path == current_path() || $first_path == request_path() || ($first_path == '<front>' && request_path() == '')) {
     if (empty($_GET['step']) || $_GET['step'] == 0) {
       // We're starting the tour over.
-      if (!empty($_SESSION['nexttour'])) {
+      if (isset($_SESSION['nexttour'])) {
         unset($_SESSION['nexttour']);
       }
     }
@@ -289,7 +304,9 @@ function bootstrap_tour_page_build(&$page) {
  * Helper function to end the current tour.
  */
 function bootstrap_tour_end_current_tour() {
-  unset($_SESSION['tour']);
+  if (isset($_SESSION['tour'])) {
+    unset($_SESSION['tour']);
+  }
 }
 
 /**
