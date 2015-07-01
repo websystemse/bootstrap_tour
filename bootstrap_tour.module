@@ -168,7 +168,7 @@ function bootstrap_tour_run_tour($id, $force = FALSE) {
 
   $tour = bootstrap_tour_load($id);
 
-  if (!bootstrap_tour_access($tour)) {
+  if (!bootstrap_tour_access($tour) && empty($tour->steps)) {
     return;
   }
 
@@ -177,8 +177,13 @@ function bootstrap_tour_run_tour($id, $force = FALSE) {
     $_SESSION['tour'] = $tour->name;
   }
 
-  $first_path = $tour->start_path;
-  $tour->steps[0]->path = $first_path;
+  if ($tour->autorun) {
+    $tour->steps[0]->path = $tour->start_path;
+  }
+  $first_path = $tour->steps[0]->path;
+  if (empty($first_path)) {
+    return;
+  }
   if ($first_path == current_path() || $first_path == request_path() || ($first_path == '<front>' && request_path() == '')) {
     if (empty($_GET['step']) || $_GET['step'] == 0) {
       // We're starting the tour over.
