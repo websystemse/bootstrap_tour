@@ -114,3 +114,19 @@ function _bootstrap_tour_name_exists($name, $element, &$form_state) {
   $result = db_query('SELECT bootstrap_tour_id from {bootstrap_tour_tour} WHERE name = :name LIMIT 1', array(':name' => $name));
   return ($result->rowCount()==0 ? FALSE : TRUE);
 }
+
+/**
+ * Admin settings form.
+ */
+function bootstrap_tour_admin_settings() {
+    $form = array();
+
+    $form['bootstrap_tour_use_standalone'] = array(
+        '#title' => t('Use standalone js and css'),
+        '#description' => t('If you use this module with a non-bootstrap theme, checking this will mean the module will not require bootstrap css and js to work'),
+        '#type' => 'checkbox',
+        '#default_value' => variable_get('bootstrap_tour_use_standalone'),
+    );
+
+    return system_settings_form($form);
+}

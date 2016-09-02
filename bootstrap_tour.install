@@ -55,7 +55,7 @@ function bootstrap_tour_update_7200() {
 
     // Steps are their own entities now so we need to save them as such.
     foreach ($steps as $index => $step) {
-      $new_step = entity_create('bootstrap_tour_step', array (
+      $new_step = entity_create('bootstrap_tour_step', array(
         'path' => isset($step['path']) ? $step['path'] : '',
         'selector' => $step['selector'],
         'placement' => $step['placement'],
@@ -103,6 +103,51 @@ function bootstrap_tour_update_7201() {
 }
 
 /**
+ * Add user watched state tracking and script callback support.
+ */
+function bootstrap_tour_update_7202() {
+  if (!db_table_exists('bootstrap_tour_user_status')) {
+    db_create_table('bootstrap_tour_user_status', bootstrap_tour_db_user_table());
+  }
+  if (!db_field_exists('bootstrap_tour_step', 'script_callbacks')) {
+    db_add_field('bootstrap_tour_step', 'script_callbacks', array(
+        'description' => 'Script callbacks.',
+        'type' => 'text',
+        'size' => 'big',
+      )
+    );
+  }
+}
+
+function bootstrap_tour_db_user_table() {
+  return array(
+    'description' => t('Bootstrap tours per user status courtesy of the Bootstrap Tours module'),
+    'fields' => array(
+      'bootstrap_tour_id' => array(
+        'description' => 'ID field used for internal lookups.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'description' => 'The user ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'status' => array(
+        'description' => 'Tour watched status.',
+        'type' => 'int',
+        'default' => 0,
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('bootstrap_tour_id', 'uid'),
+  );
+}
+
+/**
  * Implements hook_schema().
  */
 function bootstrap_tour_schema() {
@@ -138,6 +183,7 @@ function bootstrap_tour_schema() {
 
   $schema['bootstrap_tour_tour'] = bootstrap_tour_db_tour_table();
   $schema['bootstrap_tour_step'] = bootstrap_tour_db_step_table();
+  $schema['bootstrap_tour_user_status'] = bootstrap_tour_db_user_table();
 
   return $schema;
 }
@@ -151,51 +197,51 @@ function bootstrap_tour_db_tour_table() {
   return array(
     'description' => t('Bootstrap tours courtesy of the Bootstrap Tours module'),
     'fields' => array(
-      'bootstrap_tour_id' => array(
-        'description' => 'Primary ID field for the table. Not used for anything except internal lookups.',
-        'type' => 'serial',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'no export' => TRUE,
-      ),
-      'title' => array(
-        'description' => 'Human readable name for the tour used for administrative purposes.',
-        'type' => 'varchar',
-        'length' => '255',
-      ),
-      'name' => array(
-        'description' => 'Unique ID for tours used to identify them programmatically, generated from the name.',
-        'type' => 'varchar',
-        'length' => '255',
-      ),
-      'description' => array(
-        'description' => 'A description of the site tour, used for administrative purposes.',
-        'type' => 'varchar',
-        'length' => '255',
-      ),
-      'roles' => array(
-        'description' => 'A comma separated list of roles that can access this tour.',
-        'type' => 'varchar',
-        'length' => '255',
-      ),
-      'autorun' => array(
-        'description' => 'Boolean indicating whether the tour should automatically start when the start path is visited.',
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 1,
-      ),
-      'start_path' => array(
-        'description' => 'The path at which the tour should begin.',
-        'type' => 'varchar',
-        'length' => '255',
-      ),
-      'enabled' => array(
-        'description' => 'Boolean indicating whether the tour is enabled or disabled.',
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 1,
-      ),
-    ) + entity_exportable_schema_fields(),
+        'bootstrap_tour_id' => array(
+          'description' => 'Primary ID field for the table. Not used for anything except internal lookups.',
+          'type' => 'serial',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'no export' => TRUE,
+        ),
+        'title' => array(
+          'description' => 'Human readable name for the tour used for administrative purposes.',
+          'type' => 'varchar',
+          'length' => '255',
+        ),
+        'name' => array(
+          'description' => 'Unique ID for tours used to identify them programmatically, generated from the name.',
+          'type' => 'varchar',
+          'length' => '255',
+        ),
+        'description' => array(
+          'description' => 'A description of the site tour, used for administrative purposes.',
+          'type' => 'varchar',
+          'length' => '255',
+        ),
+        'roles' => array(
+          'description' => 'A comma separated list of roles that can access this tour.',
+          'type' => 'varchar',
+          'length' => '255',
+        ),
+        'autorun' => array(
+          'description' => 'Boolean indicating whether the tour should automatically start when the start path is visited.',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 1,
+        ),
+        'start_path' => array(
+          'description' => 'The path at which the tour should begin.',
+          'type' => 'varchar',
+          'length' => '255',
+        ),
+        'enabled' => array(
+          'description' => 'Boolean indicating whether the tour is enabled or disabled.',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 1,
+        ),
+      ) + entity_exportable_schema_fields(),
     'primary key' => array('bootstrap_tour_id'),
     'unique keys' => array(
       'name' => array('name'),
@@ -248,6 +294,11 @@ function bootstrap_tour_db_step_table() {
         'description' => 'The text format of the content field.',
         'type' => 'varchar',
         'length' => '255',
+      ),
+      'script_callbacks' => array(
+        'description' => 'Script callbacks.',
+        'type' => 'text',
+        'size' => 'big',
       ),
     ),
     'primary key' => array('bootstrap_tour_step_id'),
@@ -358,7 +409,10 @@ function bootstrap_tour_setup_step_field() {
       'handler_settings' => array('target_bundles' => NULL),
     ),
     'display' => array(
-      'default' => array('label' => 'inline', 'type' => 'entityreference_label'),
+      'default' => array(
+        'label' => 'inline',
+        'type' => 'entityreference_label'
+      ),
     ),
   );
   field_create_instance($instance);
