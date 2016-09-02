@@ -103,6 +103,16 @@ function bootstrap_tour_menu() {
     'type' => MENU_CALLBACK,
   );
 
+  $items['tours'] = array(
+    'title' => 'Site Tours',
+    'access callback' => TRUE,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('bootstrap_tour_tours_form'),
+    'file' => 'includes/bootstrap_tour.tours.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+
   return $items;
 }
 
@@ -289,7 +299,10 @@ function bootstrap_tour_run_tour($id, $force = FALSE) {
   $tour->force = $force;
   $tour->cleanUrls = variable_get('clean_url', 0);
 
-  drupal_add_js('public://js/bootstrap_tour/' . $tour->name . '.js', array('weight' => 100));
+  if (file_exists('public://js/bootstrap_tour/' . $tour->name . '.js')) {
+    drupal_add_js('public://js/bootstrap_tour/' . $tour->name . '.js', array('weight' => 100));
+  }
+
   drupal_add_js(array('bootstrapTour' => array('tour' => $tour)), 'setting');
 
   $variant = (variable_get('bootstrap_tour_use_standalone') == 1) ? 'standalone' : NULL;
@@ -421,7 +434,7 @@ function bootstrap_tour_restart_tour($tour_name) {
     $_SESSION['tour'] = $tour_name;
   }
   else {
-    echo 'An error has occured. Please contact the site administrator if the issue persists.';
+    drupal_set_message('An error has occured. Please contact the site administrator if the issue persists.', 'error');
   }
 }
 

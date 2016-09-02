@@ -168,6 +168,8 @@
         if (tourConfig.force && tourConfig.isFirstStep) {
           // Manually restart if "force" is true and we're on the path of the first step.
           t.restart();
+        } else {
+          t.start();
         }
       });
     }
