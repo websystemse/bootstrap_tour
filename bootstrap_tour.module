@@ -9,14 +9,11 @@
  * Implements hook_entity_info().
  */
 function bootstrap_tour_entity_info() {
-  // If this is called too early before update runs, it'll fatal.
-  if (!module_exists('inline_entity_form')) {
-    return array();
-  }
   $bootstrap_tour_entity_info['bootstrap_tour'] = array(
     'label' => t('Site Tour'),
     'entity class' => 'Entity',
     'controller class' => 'BootstrapTourEntityController',
+    'views controller class' => 'EntityDefaultViewsController',
     'base table' => 'bootstrap_tour_tour',
     'fieldable' => TRUE,
     'exportable' => TRUE,
@@ -24,47 +21,92 @@ function bootstrap_tour_entity_info() {
       'id' => 'bootstrap_tour_id',
       'label' => 'title',
       'name' => 'name',
+      'language' => 'language',
     ),
+    'module' => 'bootstrap_tour',
+    'access callback' => 'bootstrap_tour_admin_access',
     'static cache' => TRUE,
     'admin ui' => array(
       'path' => 'admin/structure/tours',
       'controller class' => 'BootstrapTourUIController',
       'file' => 'includes/bootstrap_tour.admin.inc',
     ),
-    'module' => 'bootstrap_tour',
-    'access callback' => 'bootstrap_tour_admin_access',
-    'views controller class' => 'EntityDefaultViewsController',
     'bundles' => array(
-      // Entity defaults to entity type for single bundles.
       'bootstrap_tour' => array(
-        'label' => t('Site Tour'),
+        'label' => t('Site Tours'),
         'admin' => array(
           'path' => 'admin/structure/tours',
           'access arguments' => array('administer bootstrap tours'),
         ),
       ),
     ),
-  );
-  $bootstrap_tour_entity_info['bootstrap_tour_step'] = array(
-    'label' => t('Site Tour Step'),
-    'entity class' => 'Entity',
-    'controller class' => 'EntityAPIController',
-    'base table' => 'bootstrap_tour_step',
-    'fieldable' => FALSE,
-    'entity keys' => array(
-      'id' => 'bootstrap_tour_step_id',
-      'label' => 'title',
-      'name' => 'name',
+    'translation' => array(
+      'entity_translation' => array(
+        'base path' => 'admin/structure/tours/manage/%bootstrap_tour',
+      ),
     ),
-    'static cache' => TRUE,
-    'module' => 'bootstrap_tour',
-    'access callback' => 'bootstrap_tour_admin_access',
-    'views controller class' => 'EntityDefaultViewsController',
-    'inline entity form' => array(
-      'controller' => 'BootstrapTourStepInlineEntityFormController',
-      'file' => 'includes/bootstrap_tour_step.inline_entity_form.inc',
+    'field replacement' => array(
+      'title' => array(
+        'field' => array(
+          'type' => 'text',
+          'cardinality' => 1,
+          'translatable' => TRUE,
+        ),
+        'instance' => array(
+          'label' => t('Title'),
+          'description' => '',
+        ) + array(
+          'required' => TRUE,
+          'settings' => array(
+            'text_processing' => 0,
+          ),
+          'widget' => array(
+            'weight' => -5,
+          ),
+          'display' => array(
+            'default' => array(
+              'type' => 'hidden',
+            ),
+          ),
+        ),
+        'additional keys' => array(
+          'format' => 'format',
+        ),
+      ),
     ),
+    'efq bundle conditions' => TRUE,
   );
+
+  $version = db_select('system', 's')
+    ->fields('s', ['schema_version'])
+    ->condition('s.type', 'module')
+    ->condition('s.name', 'bootstrap_tour')
+    ->execute()
+    ->fetchCol();
+
+  if ($version > 7300) {
+    $bootstrap_tour_entity_info['bootstrap_tour_step'] = array(
+      'label' => t('Site Tour Step'),
+      'entity class' => 'Entity',
+      'controller class' => 'EntityAPIController',
+      'base table' => 'bootstrap_tour_step',
+      'fieldable' => FALSE,
+      'entity keys' => array(
+        'id' => 'bootstrap_tour_step_id',
+        'label' => 'title',
+        'language' => 'language',
+      ),
+      'static cache' => TRUE,
+      'module' => 'bootstrap_tour',
+      'access callback' => 'bootstrap_tour_admin_access',
+      'views controller class' => 'EntityDefaultViewsController',
+      'inline entity form' => array(
+        'controller' => 'BootstrapTourStepInlineEntityFormController',
+        'file' => 'includes/bootstrap_tour_step.inline_entity_form.inc',
+      ),
+    );
+
+  }
   return $bootstrap_tour_entity_info;
 }
 
@@ -105,13 +147,29 @@ function bootstrap_tour_menu() {
 
   $items['tours'] = array(
     'title' => 'Site Tours',
-    'access callback' => TRUE,
+    'access callback' => 'bootstrap_tour_tours_access_callback',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('bootstrap_tour_tours_form'),
     'file' => 'includes/bootstrap_tour.tours.inc',
     'type' => MENU_NORMAL_ITEM,
   );
 
+  $items['user/%/tours'] = array(
+    'title' => 'Site Tours',
+    'access callback' => 'bootstrap_tour_tours_access_callback',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('bootstrap_tour_tours_form'),
+    'file' => 'includes/bootstrap_tour.tours.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['user/me/tours'] = array(
+    'title' => 'Site Tours',
+    'page callback' => 'bootstrap_tour_tours_redirect',
+    'access callback' => 'bootstrap_tour_tours_access_callback',
+    'type' => MENU_NORMAL_ITEM,
+    'menu_name' => 'user-menu',
+  );
 
   return $items;
 }
@@ -129,10 +187,31 @@ function bootstrap_tour_permission() {
 }
 
 /**
- * Bootstrap Tour access callback.
+ * Admin access callback.
  */
 function bootstrap_tour_admin_access($op, $tour = NULL, $account = NULL) {
   return user_access('administer bootstrap tours', $account);
+}
+
+/**
+ * Bootstrap Tour access callback.
+ */
+function bootstrap_tour_tours_access_callback() {
+  $tours = bootstrap_tour_load_all();
+  foreach ($tours as $tour) {
+    if (bootstrap_tour_access($tour)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Redirect to users tours.
+ */
+function bootstrap_tour_tours_redirect() {
+  global $user;
+  drupal_goto('user/' . $user->uid . '/tours');
 }
 
 /**
@@ -145,7 +224,8 @@ function bootstrap_tour_views_api() {
 }
 
 /**
- * Implementation of hook_libraries_info().
+ * Implements hook_libraries_info().
+ *
  * Tell Drupal about the Bootstrap Tour library.
  */
 function bootstrap_tour_libraries_info() {
@@ -201,7 +281,7 @@ function bootstrap_tour_libraries_info() {
 }
 
 /**
- * Remove tour cookies from session
+ * Remove tour cookies from session.
  */
 function bootstrap_tour_cleanup() {
   if (isset($_SESSION['tour'])) {
@@ -213,10 +293,14 @@ function bootstrap_tour_cleanup() {
 }
 
 /**
- * Helper function to load a file from local disk or from remote url
- * @param $type
- * @param $filename
- * @param $uri
+ * Helper function to load a file from local disk or from remote url.
+ *
+ * @param string $type
+ *   Js/css.
+ * @param string $filename
+ *   Name of the file to add.
+ * @param string $uri
+ *   File URI.
  */
 function bootstrap_tour_load_file($type, $filename, $uri) {
   $file = 'public://' . $filename;
@@ -227,7 +311,7 @@ function bootstrap_tour_load_file($type, $filename, $uri) {
     $base = parse_url($base_url);
     $url = $base['scheme'] . '://' . $uri;
     if (system_retrieve_file($url, $file, FALSE, FILE_EXISTS_REPLACE) === FALSE) {
-      // If we can't cache the file locally, use the remote CDN link
+      // If we can't cache the file locally, use the remote CDN link.
       $file = $url;
       $options = 'external';
     }
@@ -244,24 +328,32 @@ function bootstrap_tour_load_file($type, $filename, $uri) {
  * Helper function to actually run a tour. Can be called from anywhere.
  */
 function bootstrap_tour_run_tour($id, $force = FALSE) {
-
   $tour = bootstrap_tour_load($id);
 
-  if (!bootstrap_tour_access($tour) || empty($tour->steps)) {
+  $steps = entity_load('field_collection_item', array_column($tour->field_bootstrap_tour_step[LANGUAGE_NONE], 'value'));
+  reset($steps);
+  $first_key = key($steps);
+
+  if (!bootstrap_tour_access($tour) || empty($steps)) {
     bootstrap_tour_cleanup();
     return;
   }
 
   if ($tour->autorun && !empty($tour->start_path)) {
-    $tour->steps[0]->path = $tour->start_path;
+    if (drupal_match_path(current_path(), $tour->start_path)) {
+      $steps[$first_key]->field_bs_tour_step_path[LANGUAGE_NONE]['value'] = current_path();
+    }
+    else {
+      $steps[$first_key]->field_bs_tour_step_path[LANGUAGE_NONE]['value'] = $tour->start_path;
+    }
   }
-  $first_path = $tour->steps[0]->path;
+  $first_path = $steps[$first_key]->field_bs_tour_step_path[LANGUAGE_NONE]['value'];
   if (empty($first_path)) {
     bootstrap_tour_cleanup();
     return;
   }
 
-  if (count($tour->steps) > 1) {
+  if (count($steps) > 1) {
     // Set this as the current tour in the session.
     $_SESSION['tour'] = $tour->name;
   }
@@ -274,38 +366,51 @@ function bootstrap_tour_run_tour($id, $force = FALSE) {
       }
     }
   }
+
   drupal_alter('bootstrap_tour', $tour);
 
   $step_path = '';
-  foreach ($tour->steps as $key => &$step) {
+  $tour_config = new stdClass();
+  $tour_config->name = $tour->name;
+  $tour_config->wandered_off_message = $tour->wandered_off_message;
+  $i = 0;
+  foreach ($steps as &$step) {
+    $step_config = new stdClass();
     // If a path isn't specified, then use the path from the previous step.
-    if ($step->path) {
-      $step_path = $step->path;
+    if (!empty($step->field_bs_tour_step_path[LANGUAGE_NONE][0]['value'])) {
+      $step_path = $step->field_bs_tour_step_path[LANGUAGE_NONE][0]['value'];
     }
-    else {
-      $step->path = $step_path;
-    }
-    // Determine we are on the first step of the tour.
-    if ($path = bootstrap_tour_match_path($step->path)) {
+    $step_config->path = $step_path;
+
+    // Determine if we are on the first step of the tour.
+    if (bootstrap_tour_match_path($step_config->path)) {
       if (!empty($_GET['tour']) && (empty($_GET['step']) || $_GET['step'] == 0)) {
-        $tour->isFirstStep = TRUE;
+        $tour_config->isFirstStep = TRUE;
       }
     }
     // Filter user supplied content.
-    $step->title = check_plain($step->title);
-    $step->content = check_markup($step->content, $step->content_text_format);
-    bootstrap_tour_match_token($step->path);
+    $step_config->title = field_view_value('field_collection_item', $step, 'field_bs_tour_step_title', field_get_items('field_collection_item', $step, 'field_bs_tour_step_title')[0])['#markup'];
+    $step_config->content = field_view_value('field_collection_item', $step, 'field_bs_tour_step_content', field_get_items('field_collection_item', $step, 'field_bs_tour_step_content')[0])['#markup'];
+    bootstrap_tour_match_token($step_config->path);
+
+    $step_config->placement = $step->field_bs_tour_step_placement[LANGUAGE_NONE][0]['value'];
+    $step_config->selector = $step->field_bs_tour_step_selector['und'][0]['value'];
+
+    $tour_config->steps[$i] = $step_config;
+    $i++;
   }
-  $tour->force = $force;
-  $tour->cleanUrls = variable_get('clean_url', 0);
+
+  $tour_config->current_path = current_path();
+  $tour_config->force = $force;
+  $tour_config->cleanUrls = variable_get('clean_url', 0);
 
   if (file_exists('public://js/bootstrap_tour/' . $tour->name . '.js')) {
     drupal_add_js('public://js/bootstrap_tour/' . $tour->name . '.js', array('weight' => 100));
   }
 
-  drupal_add_js(array('bootstrapTour' => array('tour' => $tour)), 'setting');
+  drupal_add_js(array('bootstrapTour' => array('tour' => $tour_config)), 'setting');
 
-  $variant = (variable_get('bootstrap_tour_use_standalone') == 1) ? 'standalone' : NULL;
+  $variant = variable_get('bootstrap_tour_use_standalone') == 1 ? 'standalone' : NULL;
   if (module_exists('libraries') && ($library = libraries_detect('bootstrap_tour')) && !empty($library['installed'])) {
     libraries_load('bootstrap_tour', $variant);
   }
@@ -325,14 +430,15 @@ function bootstrap_tour_run_tour($id, $force = FALSE) {
     }
   }
 
-  drupal_add_js(drupal_get_path('module', 'bootstrap_tour') . '/js/bootstrap-tour.js');
-  drupal_add_css(drupal_get_path('module', 'bootstrap_tour') . '/css/bootstrap-tour.css');
+  drupal_add_js(drupal_get_path('module', 'bootstrap_tour') . '/js/bootstrap-tour.js', array('scope' => 'footer'));
+  drupal_add_css(drupal_get_path('module', 'bootstrap_tour') . '/css/bootstrap-tour.css', array('scope' => 'footer'));
 }
 
 /**
- * Implementation of hook_init().
- * Load all the tours and figure out if any are set to auto-run and start on the current page.
- * If so, go ahead and run that one.
+ * Implements hook_init().
+ *
+ * Load all the tours and figure out if any are set to auto-run
+ * and start on the current page. If so, go ahead and run that one.
  */
 function bootstrap_tour_page_build(&$page) {
   global $user;
@@ -379,7 +485,8 @@ function bootstrap_tour_page_build(&$page) {
       }
     }
   }
-  // Otherwise, only run the tour if it's set to auto-run and we're on the path of one of the steps.
+  // Otherwise, only run the tour if it's set to auto-run
+  // and we're on the path of one of the steps.
   foreach ($tours as $id => $tour) {
     if ($tour->autorun) {
       $path = $tour->start_path;
@@ -393,7 +500,8 @@ function bootstrap_tour_page_build(&$page) {
 /**
  * Helper function to end the current tour.
  *
- * This lets multiple tours be set to autostart on the same path, otherwise only the client knows if a tour has been watched.
+ * This lets multiple tours be set to autostart on the same path,
+ * otherwise only the client knows if a tour has been watched.
  * @see bootstrap_tour_page_build();
  */
 function bootstrap_tour_end_current_tour() {
@@ -416,8 +524,8 @@ function bootstrap_tour_end_current_tour() {
 /**
  * Helper function to restart a tour.
  *
- * @param $tid
- * The ID of the tour that is being restarted.
+ * @param string $tour_name
+ *   The name of the tour that is being restarted.
  */
 function bootstrap_tour_restart_tour($tour_name) {
   global $user;
@@ -439,7 +547,7 @@ function bootstrap_tour_restart_tour($tour_name) {
 }
 
 /**
- * Helper function to get all bootstrap tour names and ids in an array keyed by id.
+ * Helper function to get all tour names and ids in an array keyed by id.
  */
 function bootstrap_tour_load_config($include_disabled = FALSE) {
   if (!$include_disabled) {
@@ -453,13 +561,11 @@ function bootstrap_tour_load_config($include_disabled = FALSE) {
 }
 
 /**
- * Callback function to load a complete bootstrap tour, including all steps, by id.
+ * Callback function to load a complete bootstrap tour with all steps by id.
  */
 function bootstrap_tour_load($id) {
-  $tour = entity_load('bootstrap_tour', array($id), array(), FALSE);
+  $tour = entity_load('bootstrap_tour', array($id));
   $tour = reset($tour);
-  $wrapper = entity_metadata_wrapper('bootstrap_tour', $tour);
-  $tour->steps = $wrapper->bootstrap_tour_step_reference->value();
 
   return $tour;
 }
@@ -468,20 +574,18 @@ function bootstrap_tour_load($id) {
  * Load all the tours (and caches them).
  */
 function bootstrap_tour_load_all($reset = FALSE) {
+  global $language;
   $all_tours = &drupal_static(__FUNCTION__);
   if (!isset($all_tours) || $reset) {
-    if (!$reset && ($cache = cache_get('bootstrap_tours_all'))) {
+    if (!$reset && ($cache = cache_get('bootstrap_tours_all:' . $language->language))) {
       $all_tours = $cache->data;
     }
     else {
       $all_tours = entity_load('bootstrap_tour');
-      foreach ($all_tours as $id => $tour) {
-        $wrapper = entity_metadata_wrapper('bootstrap_tour', $tour);
-        $all_tours[$id]->steps = $wrapper->bootstrap_tour_step_reference->value();
-      }
-      cache_set('bootstrap_tours_all', $all_tours);
+      cache_set('bootstrap_tours_all:' . $language->language, $all_tours);
     }
   }
+
   return $all_tours;
 }
 
@@ -503,13 +607,13 @@ function bootstrap_tour_bootstrap_tour_update($tour) {
 /**
  * Checks access for user for tour.
  *
- * @param
- *  Loaded tour event.
- * @param $account
- *  An account object, default to current user.
+ * @param int $tour
+ *   Loaded tour event.
+ * @param object|bool $account
+ *   An account object, default to current user.
  *
- * @return
- *  True if user has access, false if they don't.
+ * @return bool
+ *   True if user has access, false if they don't.
  */
 function bootstrap_tour_access($tour, $account = NULL) {
   if (!$account) {
@@ -523,8 +627,9 @@ function bootstrap_tour_access($tour, $account = NULL) {
   $access = TRUE;
 
   if ($account->uid != 1 && !empty($tour->roles)) {
-    // Compare the tour's roles to the user's roles and if there aren't any overlaps and
-    // the user isn't user 1, cancel running the tour.
+    // Compare the tour's roles to the user's roles,
+    // if there aren't any overlaps and the user isn't user 1
+    // cancel running the tour.
     $tour_roles = explode(',', $tour->roles);
     $account_roles = array_keys($account->roles);
     $compare = array_intersect($tour_roles, $account_roles);
@@ -540,12 +645,11 @@ function bootstrap_tour_access($tour, $account = NULL) {
 /**
  * Helper function to check if path matches tour path.
  *
- * @param $path
- *  The path to match.
+ * @param string $path
+ *   The path to match.
  *
- * @return
- *  If matched, the detokenized path is returned, else FALSE is returned.
- *
+ * @return bool|string
+ *   If matched, the detokenized path is returned, else FALSE is returned.
  */
 function bootstrap_tour_match_path($path) {
   if ($path == '<front>' && request_path() == '') {
@@ -564,7 +668,7 @@ function bootstrap_tour_match_path($path) {
 /**
  * Helper function to match and replace tokens in tour path.
  *
- * @param $path
+ * @param string $path
  *   The path to match.
  */
 function bootstrap_tour_match_token(&$path) {

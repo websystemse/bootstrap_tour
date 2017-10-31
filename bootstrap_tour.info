@@ -6,7 +6,11 @@ package = Bootstrap
 dependencies[] = jquery_update
 dependencies[] = ctools
 dependencies[] = entity
-dependencies[] = entityreference
-dependencies[] = inline_entity_form
+dependencies[] = field_collection
 
 files[] = includes/bootstrap_tour.controller.inc
+
+;;; Recommended / Supported modules:
+;field_collection_fieldset
+;entity_translation
+;title

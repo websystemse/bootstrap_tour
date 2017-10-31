@@ -4,7 +4,10 @@
       $('.button-tour').once('stuff').click(function (e) {
         e.preventDefault();
         var tourName = 'tour_' + this.getAttribute('data-name');
-        resetStatus(this.getAttribute('data-name')).done(handleStatus(this, tourName));
+        var triggeringElement = this;
+        resetStatus(this.getAttribute('data-name')).done(function () {
+          handleStatus(triggeringElement, tourName)
+        });
 
         function resetStatus(name) {
           return $.ajax(Drupal.settings.basePath + 'bootstrap_tour/ajax/restart_tour/' + name);
@@ -14,7 +17,12 @@
           var path = button.getAttribute('data-path');
           localStorage.removeItem(tourName + '_current_step');
           localStorage.removeItem(tourName + '_end');
-          window.location.href = path;
+
+          if (path.length) {
+            window.location.href = path;
+          } else {
+            window.location.href = window.location.href;
+          }
         }
       })
     }

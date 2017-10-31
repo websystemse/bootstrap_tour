@@ -9,41 +9,31 @@
  */
 function bootstrap_tour_form($form, &$form_state, $tour = NULL) {
   $form = array();
-  drupal_add_css(drupal_get_path('module', 'bootstrap_tour') . '/css/bootstrap_tour_admin.css');
 
   if (empty($tour)) {
     $tour = new stdClass();
   }
+
   $form['title'] = array(
+    '#weight' => 0,
     '#type' => 'textfield',
     '#title' => t('Name'),
     '#description' => t('A human readable name for this site tour.'),
     '#required' => TRUE,
     '#default_value' => !empty($tour->title) ? $tour->title : '',
   );
-  $form['name'] = array(
-    '#type' => 'machine_name',
-    '#title' => t('Machine name'),
-    '#required' => TRUE,
-    '#size' => 50,
-    '#maxlength' => 255,
-    '#default_value' => !empty($tour->name) ? $tour->name : '',
-    '#machine_name' => array(
-      'source' => array('title'),
-      'exists' => '_bootstrap_tour_name_exists',
-    ),
+  $form['description'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Description'),
+    '#description' => t('Used for administrative purposes only.'),
+    '#default_value' => !empty($tour->description) ? $tour->description : '',
+    '#weight' => 0,
   );
   $form['enabled'] = array(
     '#type' => 'checkbox',
     '#title' => t('Enabled'),
     '#description' => t('Indicate whether or not this tour is enabled or disabled.'),
     '#default_value' => (!empty($tour->enabled) || arg(3) == 'add') ? 1 : 0,
-  );
-  $form['description'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Description'),
-    '#description' => t('Used for administrative purposes only.'),
-    '#default_value' => !empty($tour->description) ? $tour->description : '',
   );
   $form['roles'] = array(
     '#type' => 'select',
@@ -52,6 +42,12 @@ function bootstrap_tour_form($form, &$form_state, $tour = NULL) {
     '#multiple' => TRUE,
     '#options' => user_roles(),
     '#default_value' => !empty($tour->roles) ? explode(',', $tour->roles) : '',
+  );
+  $form['wandered_off_message'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Wandered off message'),
+    '#description' => t('Indicate whether or not a wandered off message should be dispalyed, if the user goes to an other page before ending the tour.'),
+    '#default_value' => (!empty($tour->wandered_off_message) || arg(3) == 'add') ? 1 : 0,
   );
   $form['autorun'] = array(
     '#type' => 'checkbox',
@@ -75,16 +71,39 @@ function bootstrap_tour_form($form, &$form_state, $tour = NULL) {
   );
 
   field_attach_form('bootstrap_tour', $tour, $form, $form_state);
+  $form['field_bs_tour_description']['#weight'] = 1;
+
+  $form['name'] = array(
+    '#type' => 'machine_name',
+    '#title' => t('Machine name'),
+    '#required' => TRUE,
+    '#size' => 50,
+    '#maxlength' => 255,
+    '#weight' => 0,
+    '#default_value' => !empty($tour->name) ? $tour->name : '',
+    '#machine_name' => array(
+      'source' => array('title'),
+      'exists' => '_bootstrap_tour_name_exists',
+    ),
+  );
+
+  if (!empty($form['title']['#field_replacement'])) {
+    $form['name']['#machine_name']['source'] = array(
+      'title_field',
+      title_active_language(),
+      0,
+      'value',
+    );
+  }
 
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save Tour'),
     '#weight' => 20,
-    '#suffix' => ' ' . l('Cancel', 'admin/structure/tours'),
+    '#suffix' => ' ' . l(t('Cancel'), 'admin/structure/tours'),
   );
   return $form;
 }
-
 
 /**
  * Implements hook_form_validate().
@@ -108,25 +127,49 @@ function bootstrap_tour_form_submit($form, &$form_state) {
 }
 
 /**
-/* Function to check if the machine name already exists.
+ * Function to check if the machine name already exists.
  */
 function _bootstrap_tour_name_exists($name, $element, &$form_state) {
-  $result = db_query('SELECT bootstrap_tour_id from {bootstrap_tour_tour} WHERE name = :name LIMIT 1', array(':name' => $name));
-  return ($result->rowCount()==0 ? FALSE : TRUE);
+  $result = db_select('bootstrap_tour_tour', 't')
+    ->condition('t.name', $name)
+    ->range(0, 1)
+    ->fields('t', ['bootstrap_tour_id'])
+    ->execute();
+  return ($result->rowCount() == 0 ? FALSE : TRUE);
 }
 
 /**
  * Admin settings form.
  */
 function bootstrap_tour_admin_settings() {
-    $form = array();
+  $form = array();
 
-    $form['bootstrap_tour_use_standalone'] = array(
-        '#title' => t('Use standalone js and css'),
-        '#description' => t('If you use this module with a non-bootstrap theme, checking this will mean the module will not require bootstrap css and js to work'),
-        '#type' => 'checkbox',
-        '#default_value' => variable_get('bootstrap_tour_use_standalone'),
+  $form['bootstrap_tour_use_standalone'] = array(
+    '#title' => t('Use standalone JS and CSS'),
+    '#description' => t('If you use this module with a non-bootstrap theme, checking this will mean the module will not require bootstrap css and js to work'),
+    '#type' => 'checkbox',
+    '#default_value' => variable_get('bootstrap_tour_use_standalone'),
+  );
+
+  if (module_exists('title')) {
+    $form['bootstrap_tour_create_title_override'] = array(
+      '#value' => t('Toggle'),
+      '#prefix' => t('<div class="form-item"><label>Toggle title integration, providing a translatable title field.</label>'),
+      '#suffix' => '<div class="description">' . t('Current status: %status', array(
+        '%status' => title_field_replacement_enabled('bootstrap_tour', 'bootstrap_tour', 'title') ? 'Enabled' : 'Disabled',
+      )) . '</div></div>',
+      '#type' => 'submit',
+      '#submit' => array('_bootstrap_tour_toggle_title_field'),
     );
+  }
 
-    return system_settings_form($form);
+  return system_settings_form($form);
+}
+
+/**
+ * Function to toggle title override field via the Title module.
+ */
+function _bootstrap_tour_toggle_title_field() {
+  drupal_set_message('Toggled title field.');
+  title_field_replacement_toggle('bootstrap_tour', 'bootstrap_tour', 'title');
 }

@@ -1,16 +1,17 @@
 <?php
+
 /**
  * @file
- * The file for all tours form and functionality for the bootstrap_tour entity
+ * Contains a form which lists all accessible tours and can start them.
  */
 
 /**
  * Implements hook_form().
  */
 function bootstrap_tour_tours_form($form, &$form_state) {
-  $form['description'] = array(
-    '#markup' => '<h3>Forgotten about some of the websites features? Here you restart any of the site tours.</h3>',
-  );
+  $form['description'] = [
+    '#markup' => '<h2>' . t('Learn more about the features of the website through our site tours.') . '</h2>',
+  ];
 
   $form['tours'] = array(
     '#type' => 'container',
@@ -28,9 +29,13 @@ function bootstrap_tour_tours_form($form, &$form_state) {
           ),
         ),
 
+        'title' => array(
+          '#markup' => '<h3>' . $tour->title . '</h3>',
+        ),
+        'description' => array('#label_display' => 'hidden') + field_view_field('bootstrap_tour', $tour, 'field_bs_tour_description'),
         'button' => array(
           '#type' => 'button',
-          '#value' => $tour->title,
+          '#value' => t('Start this tour'),
           '#id' => $tour->bootstrap_tour_id,
           '#attributes' => array(
             'class' => array(
@@ -39,16 +44,9 @@ function bootstrap_tour_tours_form($form, &$form_state) {
               'button--primary',
             ),
             'data-name' => array($tour->name),
-            'data-path' => array(url($tour->start_path)),
+            'data-path' => array($tour->start_path !== '*' ? url($tour->start_path) : ''),
           ),
         ),
-
-        'description' => array(
-          '#prefix' => '<span class="description"><i>',
-          '#markup' => (!empty($tour->description) ? $tour->description : 'No description available'),
-          '#suffix' => '</i></span>',
-        ),
-
       );
     }
   }
